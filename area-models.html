@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Area Models</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: stepper + problem card on top, area model left, staged answer sheet + formula guide right; stacks on phones */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --ink:#18232b; --muted:#5b6b75; --line:#cfd8de;
+  --a:#1f6fd1; --a-soft:#cfe1fa; --b:#d9781a; --b-soft:#fbe0c4; --both:#7a3fb8; --both-soft:#ece0f8;
+  --empty:#f6f8f9; --good:#1d8a4f; --good-soft:#d6f0e1; --bad:#c23b3b; --bad-soft:#f8dddd;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-block:14px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+.stack{display:grid;gap:18px}
+.back{color:var(--muted);text-decoration:none;font-weight:700;font-size:.9rem}
+.back:hover{color:var(--ink)}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
+header .stepper{margin-left:auto}
+.step{padding:6px 12px!important}
+.eyebrow{font:700 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.6rem,3.4vw,2.4rem);line-height:1.05;margin:2px 0 0;text-wrap:balance}
+.progress{display:flex;align-items:center;gap:10px;font:700 .9rem var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.dots{display:flex;gap:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.dot.now{border-color:var(--both)} .dot.done{background:var(--good);border-color:var(--good)}
+.stepper{display:flex;flex-wrap:wrap;gap:8px}
+.step{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 14px;font:700 .95rem var(--body);cursor:pointer;text-align:left}
+.step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-family:var(--mono);font-size:.85rem;flex:none}
+.step[aria-current="step"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.step.done .n{background:var(--good);color:var(--surface)}
+.step:disabled{opacity:.5;cursor:not-allowed}
+.step small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.stack,.wrap{gap:14px}
+.question{display:grid;gap:6px}
+.question .qtext{font-size:1.15rem}
+.qtext{font-family:var(--display);font-weight:600;font-size:clamp(1.1rem,2.3vw,1.4rem);line-height:1.3;margin:0;text-wrap:balance}
+.qsub{margin:0;font-size:1.02rem}
+.find{font-weight:700}
+
+.bench{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:1fr}}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.panel-head h3{margin:0;font-family:var(--display);font-weight:600;font-size:1.15rem}
+.legend{display:flex;gap:4px 12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg{width:14px;height:14px;border-radius:3px;border:1px solid var(--line)}
+.lg.yy{background:repeating-linear-gradient(135deg,var(--a-soft) 0 4px,var(--b-soft) 4px 8px)}
+.lg.yn{background:var(--a-soft)} .lg.ny{background:var(--b-soft)} .lg.nn{background:var(--empty)}
+.note{margin:10px 0 0;font-size:.85rem;color:var(--muted)}
+.model{position:sticky;top:12px}
+@media (max-width:900px){.model{position:static}}
+.model svg{display:block;height:clamp(300px,calc(100dvh - 240px),640px);width:auto;max-width:100%;margin:0 auto}
+.model{width:fit-content;max-width:100%}
+.model .panel-head{flex-direction:column;align-items:flex-start;gap:4px}
+.model .legend{width:0;min-width:100%}
+@media (max-width:900px){.model{width:auto}.model svg{width:100%;height:auto}}
+.model text{font-family:var(--body);fill:var(--ink)}
+.region{transition:stroke-width .15s}
+.region.hl{stroke:var(--ink)!important;stroke-width:4!important}
+
+.ans-card{container-type:inline-size}
+.ans-split{display:grid;gap:16px}
+@container (min-width:9999px){
+  .ans-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .ans-split .guide{border-left:1px dashed var(--line);padding-left:16px;border-top:0;padding-top:0;margin-top:0}
+}
+.stage{display:grid;gap:10px;padding:12px;border-radius:12px;border:1.5px solid var(--line)}
+.stage+.stage{margin-top:12px}
+.stage.done{border-color:var(--good);background:var(--good-soft)}
+.stage h4{margin:0;font:700 .8rem var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.stage.done h4{color:var(--good)}
+.stage.done{padding:8px 12px;gap:4px}
+.sum{display:flex;flex-wrap:wrap;gap:4px 14px;font:700 .85rem var(--mono)}
+.sum-item b{color:var(--good)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 5.2rem;align-items:center;gap:4px 10px}
+.row label{font-family:var(--mono);font-weight:700;font-size:.9rem;line-height:1.3}
+.row input{width:5.2rem;max-width:100%;font:500 1.05rem var(--mono);padding:7px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.row input:focus-visible{outline:3px solid var(--both);outline-offset:1px}
+.row.ok input{border-color:var(--good);background:var(--good-soft)}
+.row.no input{border-color:var(--bad);background:var(--bad-soft)}
+.row input:disabled{opacity:1;color:var(--ink)}
+.fb{grid-column:1/-1;font-size:.86rem}
+.fb:empty{display:none}
+.row.ok .fb{color:var(--good)} .row.no .fb{color:var(--bad)}
+.ca{color:var(--a)} .cb{color:var(--b)} .cab{color:var(--both)}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.tbtn{border:1.5px solid var(--ink);background:none;color:var(--ink);font:700 .95rem var(--body);padding:8px 16px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+.tbtn.primary{background:var(--ink);color:var(--bg)}
+.tbtn.go{background:var(--good);border-color:var(--good);color:var(--bg)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.msg{border-radius:10px;padding:10px 12px;font-weight:700}
+.msg.good{background:var(--good-soft);color:var(--good)}
+.fmt{font-size:.82rem;color:var(--muted);margin:0}
+
+.guide{display:grid;gap:6px;align-content:start;border-top:1px dashed var(--line);padding-top:14px;margin-top:4px}
+.gl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;padding:5px 10px;border-left:4px solid var(--muted);border-radius:0 8px 8px 0;background:var(--bg);font-size:.82rem}
+.gl b{font-family:var(--mono);margin-right:2px}
+.gl.g-yy{border-left:4px solid var(--both);background:var(--both-soft)}
+.gl.g-x{border-left-color:var(--ink)}
+.gl .tok{font-size:.76rem;padding:0 6px}
+.g-item{border-radius:8px;padding:6px 10px;border-left:5px solid var(--line);background:var(--bg);display:grid;gap:6px}
+.g-item h5{margin:0;font:700 .95rem var(--mono)}
+.g-item p{margin:0;font-size:.85rem}
+.g-p{border-left-color:var(--muted)}
+.g-yy{border-image:repeating-linear-gradient(180deg,var(--a) 0 6px,var(--b) 6px 12px) 1;background:var(--both-soft)} .g-yy h5{color:var(--both)}
+.g-nn{border-left-color:var(--muted);background:var(--empty);border:1.5px solid var(--line);border-left:5px solid var(--muted)}
+.g-x{border-left-color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-left:5px solid var(--ink)}
+.eq{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:.88rem}
+.tok{display:inline-block;padding:1px 8px;border-radius:6px;font-weight:700;font-size:.82rem;white-space:nowrap}
+.tok.yy{background:repeating-linear-gradient(135deg,var(--a-soft) 0 5px,var(--b-soft) 5px 10px);border:2px solid var(--both);color:var(--ink)}
+.tok.yn{background:var(--a-soft);border:2px solid var(--a);color:var(--ink)}
+.tok.ny{background:var(--b-soft);border:2px solid var(--b);color:var(--ink)}
+.tok.nn{background:var(--empty);border:2px solid var(--muted);color:var(--ink)}
+.tok.y{background:var(--ink);color:var(--surface)}
+.tok.n{border:2px solid var(--ink);color:var(--ink)}
+.op{font-weight:700}
+
+.finish{display:grid;gap:14px}
+.finish h2{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,3vw,2rem);margin:0}
+.finish p{margin:0;max-width:65ch}
+.tip{border-left:4px solid var(--both);background:var(--both-soft);border-radius:0 10px 10px 0;padding:12px 14px;display:grid;gap:6px;max-width:760px}
+.tip b{color:var(--both)}
+@media (prefers-reduced-motion:reduce){.region{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html" id="backLink">← All sections</a>
+  <header>
+    <div>
+      <div class="eyebrow">Section 1 · CP2U8 Probability Models</div>
+      <h1>Area Models</h1>
+    </div>
+    <nav class="stepper" aria-label="Steps">
+    <button class="step" id="tab1" type="button"><span class="n">1</span><span>Build the model<small>Split, multiply, label</small></span></button>
+    <button class="step" id="tab2" type="button"><span class="n">2</span><span>Both, neither, exactly one<small>Test-style practice</small></span></button>
+    <button class="step" id="tab3" type="button"><span class="n">3</span><span>Two different events<small>Independent A and B</small></span></button>
+  </nav>
+    <div class="progress"><span id="progText"></span><div class="dots" id="dots"></div></div>
+  </header>
+
+  <div id="work" class="stack">
+
+
+    <div class="bench">
+      <section class="card model">
+        <div class="panel-head">
+          <h3>Area model</h3>
+          <div class="legend" id="legend"></div>
+        </div>
+        <svg id="svg" viewBox="0 6 392 374" role="img" aria-label="Area model"></svg>
+      </section>
+
+      <div class="stack" style="min-width:0">
+    <section class="card question" aria-live="polite">
+        <p class="qtext" id="qtext"></p>
+        <p class="qsub" id="qsub"></p>
+        <div class="find" id="qfind"></div>
+      </section>
+      <section class="card ans-card">
+        <div class="ans-split">
+          <div>
+            <div class="panel-head"><h3>Your answers</h3></div>
+            <p class="fmt">Type each answer as a fraction, like 3/10.</p>
+            <div id="stages" style="margin-top:10px"></div>
+            <div class="msg good" id="msg" hidden style="margin-top:12px"></div>
+            <div class="tools" style="margin-top:12px"><button class="tbtn go" type="button" id="btnNext" hidden>Next problem →</button></div>
+          </div>
+          <div class="guide" aria-label="Formula guide">
+            <div class="eyebrow">Formula guide</div>
+            <div id="guideBody"></div>
+            <p class="fmt">All four rectangles add up to 1.</p>
+          </div>
+        </div>
+      </section>
+      </div>
+    </div>
+  </div>
+  <section class="card finish" id="finish" hidden></section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const KEY='cp2u8-section1';
+let progress={step1:false,step2:false,step3:false};
+try{progress={...progress,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(progress))}catch(e){}}
+
+/* Same event, two people */
+const SAME=[
+  {stmt:'1 in 4 students at a high school play a school sport.',n:1,d:4,pick:'Two students are chosen at random.',noun:'student',ylab:'Sport',nlab:'No sport'},
+  {stmt:'3 out of 10 adults in a town have a library card.',n:3,d:10,pick:'Two adults are chosen at random.',noun:'adult',ylab:'Card',nlab:'No card'},
+  {stmt:'1 in 10 people are left-handed.',n:1,d:10,pick:'Two people are chosen at random.',noun:'person',ylab:'Left',nlab:'Right'},
+  {stmt:'3 out of 5 customers at a café order a drink with their food.',n:3,d:5,pick:'Two customers are chosen at random.',noun:'customer',ylab:'Drink',nlab:'No drink'},
+  {stmt:'7 out of 10 teens have a part-time job in the summer.',n:7,d:10,pick:'Two teens are chosen at random.',noun:'teen',ylab:'Job',nlab:'No job'},
+  {stmt:'1 in 6 cars in a parking lot is electric.',n:1,d:6,pick:'Two cars are chosen at random.',noun:'car',ylab:'Electric',nlab:'Gas'},
+  {stmt:'1 in 2 households in a neighborhood own a dog.',n:1,d:2,pick:'Two households are chosen at random.',noun:'household',ylab:'Dog',nlab:'No dog'},
+  {stmt:'1 in 3 students bring lunch from home.',n:1,d:3,pick:'Two students are chosen at random.',noun:'student',ylab:'Brings',nlab:'Buys'}
+].map(c=>{const ev={n:c.n,d:c.d,ys:c.ylab,ns:c.nlab,yes:c.ylab,no:c.nlab};
+  return {same:true,stmt:c.stmt,pick:c.pick,noun:c.noun,A:{...ev,axis:'1st '+c.noun},B:{...ev,axis:'2nd '+c.noun}}});
+
+/* Two different independent events */
+const DIFF=[
+  {stmt:'Maya makes 3 out of 4 free throws. Jordan makes 2 out of 3 free throws. Each of them takes one shot.',
+   A:{n:3,d:4,axis:'Maya',ys:'Make',ns:'Miss',yes:'Maya makes',no:'Maya misses'},
+   B:{n:2,d:3,axis:'Jordan',ys:'Make',ns:'Miss',yes:'Jordan makes',no:'Jordan misses'}},
+  {stmt:'At a diner, 1 in 3 customers orders dessert and 1 in 4 customers pays with cash. One customer is chosen at random. Assume the two are independent.',
+   A:{n:1,d:3,axis:'Dessert?',ys:'Dessert',ns:'None',yes:'Dessert',no:'No dessert'},
+   B:{n:1,d:4,axis:'Payment',ys:'Cash',ns:'Card',yes:'Cash',no:'Card'}},
+  {stmt:'You roll a number cube and flip a coin.',
+   A:{n:1,d:6,axis:'Number cube',ys:'6',ns:'Not 6',yes:'Roll a 6',no:'Not a 6'},
+   B:{n:1,d:2,axis:'Coin',ys:'Heads',ns:'Tails',yes:'Heads',no:'Tails'}},
+  {stmt:'The light on Main Street is green 1 in 2 times you reach it. The light on Oak Street is green 3 out of 10 times. The lights work independently.',
+   A:{n:1,d:2,axis:'Main St.',ys:'Green',ns:'Not green',yes:'Main is green',no:'Main not green'},
+   B:{n:3,d:10,axis:'Oak St.',ys:'Green',ns:'Not green',yes:'Oak is green',no:'Oak not green'}},
+  {stmt:'Lia\'s bus is late 1 in 6 days. Separately, her alarm fails 1 in 10 days.',
+   A:{n:1,d:6,axis:'Bus',ys:'Late',ns:'On time',yes:'Bus late',no:'Bus on time'},
+   B:{n:1,d:10,axis:'Alarm',ys:'Fails',ns:'Works',yes:'Alarm fails',no:'Alarm works'}},
+  {stmt:'A weather app gives a 7 in 10 chance of sun on Saturday and a 1 in 3 chance of sun on Sunday. Assume the two days are independent.',
+   A:{n:7,d:10,axis:'Saturday',ys:'Sun',ns:'No sun',yes:'Sun Saturday',no:'No sun Saturday'},
+   B:{n:1,d:3,axis:'Sunday',ys:'Sun',ns:'No sun',yes:'Sun Sunday',no:'No sun Sunday'}}
+].map(c=>({same:false,...c}));
+
+const STEPS={1:{n:2,full:true,pool:SAME},2:{n:3,full:false,pool:SAME},3:{n:3,full:true,pool:DIFF}};
+const NSTEPS=3;
+
+function num(s){
+  s=s.trim().replace(/\s+/g,'');if(s==='')return {err:'Type a fraction.'};
+  const m=s.match(/^(\d+)\/(\d+)$/);
+  if(m){if(+m[2]===0)return {err:'The bottom of a fraction can\'t be 0.'};return {v:+m[1]/+m[2]}}
+  if(/^\d+$/.test(s))return {v:+s};
+  return {err:'Type it as a fraction, like 3/10.'};
+}
+const frac=(n,d)=>`${n}/${d}`;
+const near=(a,b)=>Math.abs(a-b)<1e-6;
+
+let step=1,probs=[],idx=0,cur=null,stage='p',hl=[];
+
+/* ---------- stepper ---------- */
+const PREVIEW=location.hash==='#preview';
+function unlocked(s){return PREVIEW||s===1||progress['step'+(s-1)]}
+function renderTabs(){
+  for(let s=1;s<=NSTEPS;s++){const t=$('tab'+s);t.classList.toggle('done',!!progress['step'+s]);t.disabled=!unlocked(s);
+    t.title=unlocked(s)?'':`Finish Step ${s-1} to unlock`;t.setAttribute('aria-current',step===s?'step':'false')}
+}
+function go(s){step=s;renderTabs();start();window.scrollTo({top:0})}
+for(let s=1;s<=NSTEPS;s++)$('tab'+s).onclick=()=>{if(unlocked(s))go(s)};
+
+function start(){
+  probs=shuffle(STEPS[step].pool.slice()).slice(0,STEPS[step].n).map(c=>JSON.parse(JSON.stringify(c)));idx=0;
+  $('work').hidden=false;$('finish').hidden=true;load();
+}
+function setDots(){const n=STEPS[step].n;$('progText').textContent=`Problem ${idx+1} of ${n}`;
+  $('dots').innerHTML=Array.from({length:n},(_,k)=>`<i class="dot ${k<idx?'done':k===idx?'now':''}"></i>`).join('')}
+
+/* ---------- problem ---------- */
+function load(){
+  const c=cur=probs[idx];
+  [c.A,c.B].forEach(e=>{e.p=e.n/e.d;e.q=1-e.p});
+  stage='p';hl=[];setDots();
+  const A=c.A,B=c.B;
+  $('qtext').textContent=c.stmt;
+  $('qsub').innerHTML=c.same?c.pick:`<b class="ca">Event A:</b> ${A.yes}. &nbsp;<b class="cb">Event B:</b> ${B.yes}.`;
+  $('qfind').textContent=STEPS[step].full
+    ?'Build the area model, then find P(both), P(neither) and P(exactly one).'
+    :`Find P(both), P(neither) and P(exactly one) for the two ${c.noun}s.`;
+  $('legend').innerHTML=`<span><i class="lg yy"></i>${A.ys}, ${B.ys}</span><span><i class="lg yn"></i>${A.ys}, ${B.ns}</span><span><i class="lg ny"></i>${A.ns}, ${B.ys}</span><span><i class="lg nn"></i>${A.ns}, ${B.ns}</span>`;
+  $('msg').hidden=true;$('btnNext').hidden=true;
+  const Y=c.same?'P(yes)':'P(A)',Yb=c.same?'P(yes)':'P(B)',N=c.same?'P(no)':'P(not A)',Nb=c.same?'P(no)':'P(not B)';
+  $('guideBody').innerHTML=`<div class="gl g-p" style="margin-bottom:6px"><b>${c.same?'P(no)':'P(not A)'}</b><span class="op">=</span>1<span class="op">−</span><span class="tok y">${Y}</span></div>
+    <div class="gl g-yy" style="margin-bottom:6px"><b class="cab">P(both)</b><span class="op">=</span><span class="tok y">${Y}</span><span class="op">×</span><span class="tok y">${Yb}</span></div>
+    <div class="gl g-nn" style="margin-bottom:6px"><b>P(neither)</b><span class="op">=</span><span class="tok n">${N}</span><span class="op">×</span><span class="tok n">${Nb}</span></div>
+    <div class="gl g-x"><b>P(exactly one)</b><span class="op">=</span><span class="tok yn">${c.same?'yes · no':'A · not B'}</span><span class="op">+</span><span class="tok ny">${c.same?'no · yes':'not A · B'}</span></div>`;
+  renderStages();draw();
+}
+
+function rowHTML(id,label,regions){label=label.replace(/ =$/,'&nbsp;=');return `<div class="row" id="r-${id}" data-hl="${regions}"><label for="in-${id}">${label}</label><input id="in-${id}" placeholder="a/b"><div class="fb" id="fb-${id}"></div></div>`}
+function renderStages(){
+  const c=cur,A=c.A,B=c.B,full=STEPS[step].full;
+  const L=(x)=>c.same?x.toLowerCase():x;
+  let h=`<div class="stage" id="st-p"><h4>1 · ${c.same?'One '+c.noun:'Each event'}</h4>`;
+  if(c.same)h+=rowHTML('pay',`P(${L(A.yes)}) =`,'')+rowHTML('pan',`P(${L(A.no)}) =`,'');
+  else h+=rowHTML('pay',`<span class="ca">P(${L(A.yes)})</span> =`,'')+rowHTML('pan',`P(${L(A.no)}) =`,'')+rowHTML('pby',`<span class="cb">P(${L(B.yes)})</span> =`,'')+rowHTML('pbn',`P(${L(B.no)}) =`,'');
+  h+=`<div class="tools"><button class="tbtn primary" type="button" data-check="p">Check</button></div></div>`;
+  const lab=(a,b)=>c.same?`${a}, ${b}`:`${a}, ${b}`;
+  if(full)h+=`<div class="stage" id="st-r" hidden><h4>2 · Each rectangle</h4>
+    ${rowHTML('yy',`<span class="cab">${lab(A.yes,B.yes)}</span> =`,'yy')}
+    ${rowHTML('yn',`<span class="ca">${lab(A.yes,B.no)}</span> =`,'yn')}
+    ${rowHTML('ny',`<span class="cb">${lab(A.no,B.yes)}</span> =`,'ny')}
+    ${rowHTML('nn',`${lab(A.no,B.no)} =`,'nn')}
+    <div class="tools"><button class="tbtn primary" type="button" data-check="r">Check</button></div></div>`;
+  h+=`<div class="stage" id="st-a" hidden><h4>${full?'3':'2'} · ${c.same?'Two '+c.noun+'s':'Both events together'}</h4>
+    ${rowHTML('both','<span class="cab">P(both)</span> =','yy')}
+    ${rowHTML('neither','P(neither) =','nn')}
+    ${rowHTML('exact','P(exactly one) =','yn,ny')}
+    <div class="tools"><button class="tbtn primary" type="button" data-check="a">Check</button></div></div>`;
+  $('stages').innerHTML=h;
+  $('stages').querySelectorAll('[data-check]').forEach(b=>b.onclick=()=>check(b.dataset.check));
+  $('stages').querySelectorAll('.row').forEach(r=>{
+    const inp=r.querySelector('input'),set=()=>{hl=r.dataset.hl?r.dataset.hl.split(','):[];draw()};
+    inp.addEventListener('focus',set);inp.addEventListener('blur',()=>{hl=[];draw()});
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const b=r.closest('.stage').querySelector('[data-check]');if(b&&!b.hidden)b.click()}});
+  });
+}
+
+function grade(items){
+  let all=true;
+  items.forEach(([id,target,hintFn])=>{
+    const p=num($('in-'+id).value);let ok=false,msg;
+    if(p.err)msg=p.err;else if(near(p.v,target)){ok=true;msg='Correct'}else msg=hintFn(p.v);
+    $('r-'+id).className='row '+(ok?'ok':'no');$('fb-'+id).textContent=(ok?'✓ ':'✗ ')+msg;if(!ok)all=false;
+  });
+  return all;
+}
+function lock(st){
+  const el=$('st-'+st);el.classList.add('done');
+  const items=[...el.querySelectorAll('.row')].map(r=>`<span class="sum-item">${r.querySelector('label').innerHTML} <b>${r.querySelector('input').value.trim()}</b></span>`).join('');
+  el.innerHTML=`<h4>${el.querySelector('h4').innerHTML}<span>✓</span></h4><div class="sum">${items}</div>`;
+}
+
+function check(st){
+  const c=cur,A=c.A,B=c.B,pA=A.p,qA=A.q,pB=B.p,qB=B.q,T=A.d*B.d;
+  const boxes=w=>` Or count ${w} boxes out of ${T}.`;
+  if(st==='p'){
+    const yesH=e=>v=>'"a in b" or "a out of b" means a/b.';
+    const noH=e=>v=>near(v,e.p)?'That\'s the same as the yes chance. The two must add to 1.':`1 − P(yes). Think ${e.d}/${e.d} − ${e.n}/${e.d}.`;
+    const items=[['pay',pA,yesH(A)],['pan',qA,noH(A)]];
+    if(!c.same)items.push(['pby',pB,yesH(B)],['pbn',qB,noH(B)]);
+    if(grade(items)){lock('p');stage=STEPS[step].full?'r':'a';$('st-'+stage).hidden=false;draw();$('st-'+stage).querySelector('input').focus()}
+  }else if(st==='r'){
+    const h=(a,b)=>v=>near(v,a+b)?'Multiply the two sides of the rectangle. Don\'t add.':'Width × height.'+boxes('its');
+    if(grade([['yy',pA*pB,h(pA,pB)],['yn',pA*qB,h(pA,qB)],['ny',qA*pB,h(qA,pB)],['nn',qA*qB,h(qA,qB)]])){lock('r');stage='a';$('st-a').hidden=false;draw();$('st-a').querySelector('input').focus()}
+  }else{
+    const one=c.same?'That\'s just one person.':'That\'s just one event.';
+    const ok=grade([
+      ['both',pA*pB,v=>near(v,pA)||near(v,pB)?one+' Both have to happen, so multiply.':near(v,pA+pB)?'Multiply, don\'t add.':'Use the striped rectangle: yes × yes.'+boxes('its')],
+      ['neither',qA*qB,v=>near(v,qA)||near(v,qB)?one+' Multiply no × no.':near(v,1-pA*pB)?'That\'s "not both." Neither means no and no.':near(v,qA+qB)?'Multiply, don\'t add.':'Use the plain rectangle: no × no.'+boxes('its')],
+      ['exact',pA*qB+qA*pB,v=>near(v,pA*qB)||near(v,qA*pB)?'There are two ways it can happen. Add both mixed rectangles.':near(v,1-pA*pB)?'That includes neither. Only use the two mixed rectangles.':near(v,1-qA*qB)?'That\'s "at least one," which includes both. Only use the two mixed rectangles.':'Add the two mixed rectangles.'+boxes('their')]]);
+    if(ok){lock('a');stage='done';draw();finishProblem()}
+  }
+}
+
+function finishProblem(){
+  const n=STEPS[step].n,m=$('msg');m.hidden=false;m.textContent=idx<n-1?'All correct!':'All correct! That was the last one.';
+  const b=$('btnNext');b.hidden=false;b.textContent=idx<n-1?'Next problem →':`Finish Step ${step} →`;b.focus();
+}
+$('btnNext').onclick=()=>{idx++;if(idx<STEPS[step].n)load();else finishStep()};
+
+function finishStep(){
+  progress['step'+step]=true;save();renderTabs();
+  const n=STEPS[step].n;$('progText').textContent=`Step ${step} complete`;$('dots').innerHTML=Array.from({length:n},()=>'<i class="dot done"></i>').join('');
+  $('work').hidden=true;const f=$('finish');f.hidden=false;
+  if(step===1){
+    f.innerHTML=`<div class="eyebrow">Step 1 complete</div><h2>You built ${n} area models.</h2>
+      <div class="tip"><p><b>Why multiply?</b> Each person is chosen separately, so the first person's result doesn't change the second person's chances. That's why each rectangle is width × height.</p>
+      <p><b>Quick check:</b> P(both) + P(neither) + P(exactly one) always equals 1.</p></div>
+      <div class="tools"><button class="tbtn go" type="button" id="toNext">Go to Step 2 →</button></div>`;
+  }else if(step===2){
+    f.innerHTML=`<div class="eyebrow">Step 2 complete</div><h2>Both, neither, exactly one: done.</h2>
+      <p>Next, the two events won't be the same thing. The model works the same way, but the sides of the square are different.</p>
+      <div class="tools"><button class="tbtn go" type="button" id="toNext">Go to Step 3 →</button></div>`;
+  }else{
+    f.innerHTML=`<div class="eyebrow">Section 1 complete</div><h2>Area Models is done.</h2>
+      <div class="tip"><p><b>Independent events:</b> one event happening doesn't change the chances of the other. That's true whether it's the same event for two people or two different events, so P(A and B) = P(A) × P(B) either way.</p></div>
+      <p>Your progress is saved on this device.</p>
+      <div class="tools"><a class="tbtn go" href="index.html">Back to all sections</a><button class="tbtn" type="button" id="again">Practice 3 more</button></div>`;
+    $('again').onclick=()=>go(3);
+  }
+  if($('toNext'))$('toNext').onclick=()=>go(step+1);
+}
+
+/* ---------- drawing ---------- */
+function draw(){
+  const c=cur,A=c.A,B=c.B,X=90,Y=78,S=296,show=stage!=='p';
+  const svg=$('svg');
+  let h=`<defs><pattern id="stripe" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="12" height="12" style="fill:var(--a-soft)"/><rect width="6" height="12" style="fill:var(--b-soft)"/></pattern></defs>`;
+  if(!show){
+    h+=`<rect x="${X}" y="${Y}" width="${S}" height="${S}" rx="4" style="fill:var(--empty);stroke:var(--line)" stroke-width="2" stroke-dasharray="6 5"/>
+      <text x="${X+S/2}" y="${Y+S/2}" text-anchor="middle" font-size="15" style="fill:var(--muted)">Find ${c.same?'P(yes) and P(no)':'each probability'}</text>
+      <text x="${X+S/2}" y="${Y+S/2+22}" text-anchor="middle" font-size="15" style="fill:var(--muted)">to draw the model.</text>`;
+    svg.innerHTML=h;return;
+  }
+  const w=S*A.p,hh=S*B.p,mA=A.d-A.n,mB=B.d-B.n,T=A.d*B.d;
+  const vals={yy:frac(A.n*B.n,T),yn:frac(A.n*mB,T),ny:frac(mA*B.n,T),nn:frac(mA*mB,T)};
+  const R={yy:[X,Y,w,hh],ny:[X+w,Y,S-w,hh],yn:[X,Y+hh,w,S-hh],nn:[X+w,Y+hh,S-w,S-hh]};
+  const fill={yy:'url(#stripe)',yn:'var(--a-soft)',ny:'var(--b-soft)',nn:'var(--empty)'};
+  const stroke={yy:'var(--both)',yn:'var(--a)',ny:'var(--b)',nn:'var(--muted)'};
+  const known=STEPS[step].full?(stage==='a'||stage==='done'):(stage==='done');
+  for(const k in R){const [x,y,ww,h2]=R[k];h+=`<rect x="${x}" y="${y}" width="${ww}" height="${h2}" style="fill:${fill[k]}"/>`;}
+  for(let i=1;i<A.d;i++){const t=S*i/A.d;h+=`<line x1="${X+t}" y1="${Y}" x2="${X+t}" y2="${Y+S}" style="stroke:var(--ink)" stroke-opacity=".2" stroke-width="1"/>`;}
+  for(let i=1;i<B.d;i++){const t=S*i/B.d;h+=`<line x1="${X}" y1="${Y+t}" x2="${X+S}" y2="${Y+t}" style="stroke:var(--ink)" stroke-opacity=".2" stroke-width="1"/>`;}
+  for(const k in R){const [x,y,ww,h2]=R[k];
+    h+=`<rect class="region ${hl.includes(k)?'hl':''}" x="${x}" y="${y}" width="${ww}" height="${h2}" style="fill:none;stroke:${stroke[k]}" stroke-width="2.5"/>`;
+    const big=Math.min(ww,h2);const fs=big<34?9:big<60?12:big<100?14:17;
+    h+=`<text x="${x+ww/2}" y="${y+h2/2+fs/3}" text-anchor="middle" font-size="${fs}" font-weight="700" style="font-family:var(--mono);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round">${known?vals[k]:'?'}</text>`;}
+  // top labels: event A (columns)
+  h+=`<text x="${X+S/2}" y="22" text-anchor="middle" font-size="14" font-weight="700">${c.same?A.axis:'A: '+A.axis}</text>`;
+  h+=`<text x="${X+w/2}" y="46" text-anchor="middle" font-size="12" font-weight="700" style="fill:var(--a)">${A.ys}</text><text x="${X+w/2}" y="64" text-anchor="middle" font-size="12" style="font-family:var(--mono)">${frac(A.n,A.d)}</text>`;
+  h+=`<text x="${X+w+(S-w)/2}" y="46" text-anchor="middle" font-size="12" font-weight="700" style="fill:var(--muted)">${A.ns}</text><text x="${X+w+(S-w)/2}" y="64" text-anchor="middle" font-size="12" style="font-family:var(--mono)">${frac(mA,A.d)}</text>`;
+  // left labels: event B (rows)
+  h+=`<text x="14" y="${Y+S/2}" text-anchor="middle" font-size="14" font-weight="700" transform="rotate(-90 14 ${Y+S/2})">${c.same?B.axis:'B: '+B.axis}</text>`;
+  h+=`<text x="${X-8}" y="${Y+hh/2-2}" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--b)">${B.ys}</text><text x="${X-8}" y="${Y+hh/2+13}" text-anchor="end" font-size="12" style="font-family:var(--mono)">${frac(B.n,B.d)}</text>`;
+  h+=`<text x="${X-8}" y="${Y+hh+(S-hh)/2-2}" text-anchor="end" font-size="12" font-weight="700" style="fill:var(--muted)">${B.ns}</text><text x="${X-8}" y="${Y+hh+(S-hh)/2+13}" text-anchor="end" font-size="12" style="font-family:var(--mono)">${frac(mB,B.d)}</text>`;
+  svg.innerHTML=h;
+}
+
+/* ---------- boot ---------- */
+if(PREVIEW){document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview');$('backLink').textContent='← All sections (teacher preview: all steps open)';}
+new MutationObserver(()=>{if(PREVIEW)document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview')}).observe(document.body,{childList:true,subtree:true});
+let first=1;for(let s=1;s<=NSTEPS;s++){if(unlocked(s)&&!progress['step'+s]){first=s;break}}
+go(first);
+</script>
+</body>
+</html>

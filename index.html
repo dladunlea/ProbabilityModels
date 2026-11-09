@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Probability Models</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column, a numbered list of the test's sections */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --ink:#18232b; --muted:#5b6b75; --line:#cfd8de;
+  --both:#7a3fb8; --good:#1d8a4f; --good-soft:#d6f0e1;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --both:#b98af0; --good:#5fd394; --good-soft:#173a28; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --both:#b98af0; --good:#5fd394; --good-soft:#173a28; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-block:32px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+.eyebrow{font:700 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(2rem,6vw,3rem);line-height:1;margin:4px 0 0;text-wrap:balance}
+.intro{margin:0;color:var(--muted)}
+ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.sec{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;color:inherit;text-decoration:none}
+a.sec:hover{border-color:var(--ink)}
+a.sec:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.num{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font:700 1rem var(--mono)}
+.sec h2{margin:0;font-family:var(--display);font-weight:600;font-size:1.2rem;line-height:1.2}
+.sec p{margin:2px 0 0;font-size:.88rem;color:var(--muted)}
+.tag{font:700 .78rem var(--body);padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.sec.done .num{background:var(--good);color:var(--surface)}
+.sec.done .tag{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.sec.soon{opacity:.55}
+@media (max-width:480px){.sec{grid-template-columns:auto minmax(0,1fr)}.tag{grid-column:2;justify-self:start}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div>
+    <div class="eyebrow">CP2U8 · Practice</div>
+    <h1>Probability Models</h1>
+  </div>
+  <p class="intro">Pick a section to work on. Your progress saves on this device.</p>
+  <ol>
+    <li><a class="sec" id="sec1" href="area-models.html"><span class="num">1</span><div><h2>Area Models</h2><p>Two selections from a percent: P(both), P(neither), P(exactly one)</p></div><span class="tag" id="tag1">Start</span></a></li>
+    <li><a class="sec" id="sec2" href="two-way-tables.html"><span class="num">2</span><div><h2>Two-Way Tables: And / Or</h2><p>P(A), P(B), P(A and B), P(A or B)</p></div><span class="tag" id="tag2">Start</span></a></li>
+    <li><div class="sec soon"><span class="num">3</span><div><h2>Conditional Probability</h2><p>P(A | B) in both directions</p></div><span class="tag">Coming soon</span></div></li>
+    <li><div class="sec soon"><span class="num">4</span><div><h2>Mutually Exclusive and Independence</h2><p>Decide and explain using probability</p></div><span class="tag">Coming soon</span></div></li>
+  </ol>
+</main>
+<script>
+[['1','cp2u8-section1',3],['2','cp2u8-section2',2]].forEach(([n,key,steps])=>{
+  try{
+    const p=JSON.parse(localStorage.getItem(key)||'{}');
+    let done=0;while(p['step'+(done+1)])done++;
+    if(done>=steps){document.getElementById('sec'+n).classList.add('done');document.getElementById('tag'+n).textContent='✓ Done';}
+    else if(done>0){document.getElementById('tag'+n).textContent=`Step ${done+1} of ${steps}`;}
+  }catch(e){}
+});
+if(location.hash==='#preview'){document.querySelectorAll('a.sec').forEach(a=>a.href=a.getAttribute('href')+'#preview');document.querySelector('.intro').textContent='Teacher preview: every step is open. Student progress still saves on this device.';}
+</script>
+</body>
+</html>

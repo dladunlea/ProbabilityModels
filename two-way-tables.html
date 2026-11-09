@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two-Way Tables: And / Or</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: stepper + problem card on top, setup bar, then the visual (grid or table) left and answer sheet right; stacks on phones */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --ink:#18232b; --muted:#5b6b75; --line:#cfd8de;
+  --a:#1f6fd1; --a-soft:#cfe1fa; --b:#d9781a; --b-soft:#fbe0c4; --both:#7a3fb8; --both-soft:#ece0f8;
+  --empty:#f6f8f9; --good:#1d8a4f; --good-soft:#d6f0e1; --bad:#c23b3b; --bad-soft:#f8dddd; --suitred:#c62f3a;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; --suitred:#ff7b84; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; --suitred:#ff7b84; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-block:14px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:18px}
+.stack{display:grid;gap:18px}
+.back{color:var(--muted);text-decoration:none;font-weight:700;font-size:.9rem}
+.back:hover{color:var(--ink)}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
+header .stepper{margin-left:auto}
+.step{padding:6px 12px!important}
+.eyebrow{font:700 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.6rem,3.4vw,2.4rem);line-height:1.05;margin:2px 0 0;text-wrap:balance}
+.progress{display:flex;align-items:center;gap:10px;font:700 .9rem var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.dots{display:flex;gap:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.dot.now{border-color:var(--both)} .dot.done{background:var(--good);border-color:var(--good)}
+
+.stepper{display:flex;flex-wrap:wrap;gap:8px}
+.step{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 14px;font:700 .95rem var(--body);cursor:pointer;text-align:left}
+.step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-family:var(--mono);font-size:.85rem;flex:none}
+.step[aria-current="step"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.step.done .n{background:var(--good);color:var(--surface)}
+.step:disabled{opacity:.5;cursor:not-allowed}
+.step small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.stack,.wrap{gap:14px}
+.question{display:grid;gap:8px}
+#step2 .qtext{font-size:1.15rem}
+.qtext{font-family:var(--display);font-weight:600;font-size:clamp(1.1rem,2.3vw,1.4rem);line-height:1.3;margin:0;text-wrap:balance}
+.evlist{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:1.02rem}
+.evlist b.a{color:var(--a)} .evlist b.b{color:var(--b)}
+.find{font-weight:700}
+.hint-btn{justify-self:start;border:1.5px solid var(--both);background:none;color:var(--both);font:700 .9rem var(--body);padding:6px 14px;border-radius:999px;cursor:pointer}
+.hint-btn[aria-expanded="true"]{background:var(--both);color:var(--surface)}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.collapse.open{grid-template-rows:1fr}
+.collapse-inner{overflow:hidden;min-height:0;visibility:hidden;transition:visibility .3s}
+.collapse.open .collapse-inner{visibility:visible}
+.hint{background:var(--both-soft);border-radius:10px;padding:12px 14px;display:grid;gap:8px;margin-top:2px}
+.frow{font-family:var(--mono);font-weight:700;font-size:clamp(.82rem,2.1vw,1rem);overflow-x:auto;white-space:nowrap}
+.hint p{margin:0;max-width:65ch}
+.ca{color:var(--a)} .cb{color:var(--b)} .cab{color:var(--both)}
+
+.setup{display:grid;gap:12px;align-content:start}
+.setline{margin-bottom:10px}
+.setup-row{display:grid;grid-template-columns:6.5rem minmax(0,1fr);gap:10px;align-items:start}
+@media (max-width:600px){.setup-row{grid-template-columns:1fr;gap:6px}}
+.setup-label{font:700 .8rem var(--body);letter-spacing:.06em;text-transform:uppercase;padding-top:7px;display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.sw.a{background:var(--a)} .sw.b{background:var(--b)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:400 .93rem var(--body);padding:6px 12px;border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:700}
+.chipsA .chip[aria-pressed="true"]{background:var(--a);border-color:var(--a);color:#fff}
+.chipsB .chip[aria-pressed="true"]{background:var(--b);border-color:var(--b);color:#fff}
+.empty-note{color:var(--muted);font-size:.9rem;padding-top:6px}
+.status{display:flex;flex-wrap:wrap;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.pill{font:700 .82rem var(--body);padding:3px 10px;border-radius:999px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.pill.ok{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.pill.no{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
+
+.top2{display:grid;gap:14px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
+@media (max-width:900px){.top2{grid-template-columns:1fr}}
+.bench{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:1fr}}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.panel-head h3{margin:0;font-family:var(--display);font-weight:600;font-size:1.15rem}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg{width:14px;height:14px;border-radius:3px;border:1px solid var(--line)}
+.lg.a{background:var(--a-soft)} .lg.b{background:var(--b-soft)}
+.lg.ab{background:repeating-linear-gradient(135deg,var(--a-soft) 0 4px,var(--b-soft) 4px 8px)}
+.note{margin:10px 0 0;font-size:.85rem;color:var(--muted)}
+
+/* Step 1 grid */
+.grid-scroll{overflow-x:auto}
+.grid{display:grid;gap:4px;min-width:max-content}
+.grid-empty{color:var(--muted);padding:40px 12px;text-align:center;border:2px dashed var(--line);border-radius:10px}
+.cell{display:grid;place-items:center;border-radius:6px;border:1.5px solid var(--line);background:var(--empty);
+  font-family:var(--mono);font-weight:500;font-size:.8rem;transition:background .2s,border-color .2s;font-variant-numeric:tabular-nums}
+.dice .cell{width:52px;height:44px}
+.grid.cards{min-width:0;gap:3px}
+.cards .cell{aspect-ratio:5/6;min-width:0;font-size:clamp(.6rem,1.1vw,.8rem);border-radius:5px}
+@media (max-width:560px){.grid.cards{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(13,auto);grid-auto-flow:column;gap:4px}
+.cards .cell{aspect-ratio:auto;height:34px;font-size:.85rem}}
+.cell.red{color:var(--suitred)}
+.inA{background:var(--a-soft)!important;border-color:var(--a)!important}
+.inB{background:var(--b-soft)!important;border-color:var(--b)!important}
+.inA.inB{background:repeating-linear-gradient(135deg,var(--a-soft) 0 6px,var(--b-soft) 6px 12px)!important;border-color:var(--both)!important;border-width:2.5px!important}
+.axis{font:700 .75rem var(--body);color:var(--muted);display:grid;place-items:center}
+
+/* Step 2 table */
+.tw{border-collapse:separate;border-spacing:4px;font-variant-numeric:tabular-nums;margin:0 auto}
+.tw th,.tw td{border:1.5px solid var(--line);border-radius:8px;background:var(--empty);padding:10px 14px;text-align:center;font-family:var(--mono);font-size:1rem;transition:background .2s,border-color .2s}
+.tw thead th{font-family:var(--body);font-size:.9rem}
+.tw th.corner{background:none;border:none;font:400 .78rem var(--body);color:var(--muted);text-align:left}
+.tw .hdr{cursor:pointer;font-family:var(--body);font-weight:700}
+.tw .hdr:hover{border-color:var(--muted)}
+.tw .hdr:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.tw .tot{font-weight:700;background:var(--bg)}
+.tw .grand{border:2px dashed var(--both);color:var(--both);font-weight:700;background:var(--bg)}
+@media (max-width:560px){.tw th,.tw td{padding:8px 7px;font-size:.9rem}.tw thead th{font-size:.8rem}}
+.tw th.totlabel{background:var(--bg);font-family:var(--body);color:var(--muted);font-size:.85rem}
+
+.sheet{display:grid;gap:10px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.row label{font-family:var(--mono);font-weight:700;font-size:.95rem;min-width:8.8rem}
+.row input{width:7.5rem;max-width:100%;font:500 1.05rem var(--mono);padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.row input:focus-visible{outline:3px solid var(--both);outline-offset:1px}
+.row.ok input{border-color:var(--good);background:var(--good-soft)}
+.row.no input{border-color:var(--bad);background:var(--bad-soft)}
+.fb{flex-basis:100%;font-size:.88rem}
+.fb:empty{display:none}
+.row.ok .fb{color:var(--good)} .row.no .fb{color:var(--bad)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.tbtn{border:1.5px solid var(--ink);background:none;color:var(--ink);font:700 .95rem var(--body);padding:8px 16px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+.tbtn.primary{background:var(--ink);color:var(--bg)}
+.tbtn.go{background:var(--good);border-color:var(--good);color:var(--bg)}
+.tbtn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,a:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.msg{border-radius:10px;padding:10px 12px;font-weight:700}
+.msg.good{background:var(--good-soft);color:var(--good)}
+.msg.warn{background:var(--bad-soft);color:var(--bad)}
+
+.bench.s1{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}
+@media (max-width:900px){.bench.s1{grid-template-columns:1fr}}
+.ans-card{container-type:inline-size}
+.ans-split{display:grid;gap:16px}
+@container (min-width:430px){
+  .ans-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .ans-split .venn{margin-top:0;border-top:0;padding-top:0;border-left:1px dashed var(--line);padding-left:16px}
+  .ans-split .row{display:grid;grid-template-columns:minmax(0,1fr) 6rem}
+  .ans-split .row label{min-width:0;font-size:.85rem}
+  .ans-split .row input{width:6rem}
+  .ans-split .fb{grid-column:1/-1}
+}
+.guide{display:grid;gap:6px;align-content:start}
+.g-item{border-radius:8px;padding:6px 10px;border-left:5px solid var(--line);background:var(--bg);display:grid;gap:6px}
+.g-item h4{margin:0;font:700 .85rem var(--mono)}
+.guide .g-item{grid-template-columns:5.8rem minmax(0,1fr);align-items:center;padding:6px 10px}
+.guide .g-item .eq{justify-content:flex-start}
+.guide .g-item.g-or{grid-template-columns:1fr;gap:4px}
+.guide .g-item.g-or .eq{justify-content:center}
+.g-item .tok{font-size:.74rem;padding:0 6px}
+.g-item .eq{font-size:.8rem}
+.g-item p{margin:0;font-size:.85rem;color:var(--muted)}
+.g-a{border-color:var(--a);background:var(--a-soft)} .g-a h4{color:var(--a)}
+.g-b{border-color:var(--b);background:var(--b-soft)} .g-b h4{color:var(--b)}
+.g-ab{border-image:repeating-linear-gradient(180deg,var(--a) 0 6px,var(--b) 6px 12px) 1;background:var(--both-soft);border-radius:0 10px 10px 0} .g-ab h4{color:var(--both)}
+.g-or{border-color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-left:5px solid var(--ink)}
+.g-a p,.g-b p,.g-ab p{color:var(--ink)}
+.eq{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:.88rem}
+.frac{display:inline-grid;justify-items:center;gap:3px}
+.frac>.top{padding-bottom:3px;border-bottom:2px solid var(--ink);display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center}
+.tok{display:inline-block;padding:1px 8px;border-radius:6px;font-weight:700;font-size:.82rem;white-space:nowrap}
+.tok.a{background:var(--a);color:var(--surface)}
+.tok.b{background:var(--b);color:var(--surface)}
+.tok.ab{background:repeating-linear-gradient(135deg,var(--a-soft) 0 5px,var(--b-soft) 5px 10px);border:2px solid var(--both);color:var(--ink)}
+.tok.g{border:2px dashed var(--both);color:var(--both);background:var(--surface)}
+.op{font-weight:700}
+.venn{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.venn h4{margin:0 0 6px;font-family:var(--display);font-weight:600;font-size:1.05rem}
+.venn svg{width:100%;max-width:420px;height:auto;display:block}
+.venn text{font-family:var(--mono);font-weight:700;fill:var(--ink)}
+
+.finish{display:grid;gap:14px}
+.finish h2{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,3vw,2rem);margin:0}
+.finish p{margin:0;max-width:65ch}
+.me-note{border-left:4px solid var(--both);background:var(--both-soft);border-radius:0 10px 10px 0;padding:12px 14px;display:grid;gap:6px;max-width:760px}
+.me-note b{color:var(--both)}
+@media (prefers-reduced-motion:reduce){.cell,.collapse,.collapse-inner,.tw td,.tw th{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← All sections</a>
+  <header>
+    <div>
+      <div class="eyebrow">Section 2 · CP2U8 Probability Models</div>
+      <h1>Two-Way Tables: And / Or</h1>
+    </div>
+    <nav class="stepper" aria-label="Steps">
+    <button class="step" id="tab1" type="button"><span class="n">1</span><span>Or rule<small>Dice and cards</small></span></button>
+    <button class="step" id="tab2" type="button"><span class="n">2</span><span>Two-way tables<small>And / Or</small></span></button>
+  </nav>
+    <div class="progress"><span id="progText"></span><div class="dots" id="dots"></div></div>
+  </header>
+
+  <!-- ===================== STEP 1 ===================== -->
+  <div id="step1" class="stack">
+    <div id="s1work" class="stack">
+      <div class="top2">
+      <section class="card question" aria-live="polite">
+        <p class="qtext" id="s1q"></p>
+        <ul class="evlist" id="s1ev"></ul>
+        <div class="find">Find P(A), P(B), P(A and B), and P(A or B).</div>
+        <button class="hint-btn" type="button" aria-expanded="false" data-hint="s1hint">Hint ▾</button>
+        <div class="collapse" id="s1hint"><div class="collapse-inner"><div class="hint">
+          <div class="frow">P(A or B) = <span class="ca">P(A)</span> + <span class="cb">P(B)</span> − <span class="cab">P(A and B)</span></div>
+          <p>Outcomes that are in <b>both</b> A and B (the striped ones) get counted once when you find P(A) and again when you find P(B). That's double counting. Subtract P(A and B) one time so each outcome is only counted once.</p>
+          <p>Every fraction uses the same bottom number: the total number of outcomes.</p>
+        </div></div></div>
+      </section>
+
+      <section class="card setup">
+        <div class="setup-row"><div class="setup-label">Situation</div><div class="chips" id="s1chipsS"></div></div>
+        <div class="setup-row"><div class="setup-label"><i class="sw a"></i>Event A</div><div class="chips chipsA" id="s1chipsA"></div></div>
+        <div class="setup-row"><div class="setup-label"><i class="sw b"></i>Event B</div><div class="chips chipsB" id="s1chipsB"></div></div>
+        <div class="status" id="s1status"></div>
+      </section>
+      </div>
+
+      <div class="bench s1">
+        <section class="card">
+          <div class="panel-head">
+            <h3 id="s1title">Sample space</h3>
+            <div class="legend"><span><i class="lg a"></i>A only</span><span><i class="lg b"></i>B only</span><span><i class="lg ab"></i>A and B</span></div>
+          </div>
+          <div class="grid-scroll" id="s1grid"></div>
+          <p class="note" id="s1note"></p>
+        </section>
+        <section class="card ans-card" id="s1sheetCard"></section>
+      </div>
+    </div>
+    <section class="card finish" id="s1finish" hidden></section>
+  </div>
+
+  <!-- ===================== STEP 2 ===================== -->
+  <div id="step2" class="stack" hidden>
+    <div id="s2work" class="stack">
+      <div class="bench s1">
+        <div class="stack" style="min-width:0;gap:14px">
+        
+        <section class="card">
+          <div class="panel-head">
+            <h3 id="s2title">Two-way table</h3>
+            <div class="legend"><span><i class="lg a"></i>A (row)</span><span><i class="lg b"></i>B (column)</span><span><i class="lg ab"></i>A and B</span></div>
+          </div>
+          <div class="setline"><p class="note" style="margin:0 0 6px">Click a <b class="ca">row label</b> to set Event A. Click a <b class="cb">column label</b> to set Event B.</p>
+        <div class="status" id="s2status" style="border:0;padding:0"></div></div>
+          <div class="grid-scroll" id="s2table"></div>
+          <p class="note">The dashed purple number is the grand total.</p>
+        </section>
+        </div>
+        <div class="stack" style="min-width:0;gap:14px">
+        <section class="card question" aria-live="polite">
+        <p class="qtext" id="s2q"></p>
+        <ul class="evlist" id="s2ev"></ul>
+        <div class="find">Find P(A), P(B), P(A and B), and P(A or B).</div>
+        <button class="hint-btn" type="button" aria-expanded="false" data-hint="s2hint">Hint ▾</button>
+        <div class="collapse" id="s2hint"><div class="collapse-inner"><div class="hint">
+          <div class="frow">P(A or B) = <span class="ca">P(A)</span> + <span class="cb">P(B)</span> − <span class="cab">P(A and B)</span></div>
+          <p><b class="ca">P(A)</b> = the row total ÷ the grand total. <b class="cb">P(B)</b> = the column total ÷ the grand total.</p>
+          <p><b class="cab">P(A and B)</b> = the one cell where the row and column cross ÷ the grand total.</p>
+          <p>For <b>P(A or B)</b>, the crossing cell is inside the row total <i>and</i> the column total, so adding them counts it twice. Subtract it once.</p>
+        </div></div></div>
+      </section>
+        <section class="card ans-card" id="s2sheetCard"></section>
+        </div>
+      </div>
+    </div>
+    <section class="card finish" id="s2finish" hidden></section>
+  </div>
+</div>
+
+<script>
+/* ---------- shared ---------- */
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const KEY='cp2u8-section2';
+let progress={step1:false,step2:false};
+try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');progress={...progress,...s}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(progress))}catch(e){}}
+
+function parse(s){
+  s=s.trim();const m=s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if(m){const d=+m[2];return d===0?{err:'The bottom of a fraction can\'t be 0.'}:{n:+m[1],d}}
+  if(/^\d+$/.test(s))return {n:+s,d:1};
+  if(s==='')return {err:'Type a fraction.'};
+  return {err:'Type it as a fraction, like 4/36.'};
+}
+function sheetHTML(p){return `
+  <div class="panel-head"><h3>Your answers</h3></div>
+  <div class="sheet" id="${p}form">
+    <div class="row" id="${p}r-a"><label for="${p}in-a"><span class="ca">P(A)</span> =</label><input id="${p}in-a" placeholder="a/b"><div class="fb" id="${p}fb-a"></div></div>
+    <div class="row" id="${p}r-b"><label for="${p}in-b"><span class="cb">P(B)</span> =</label><input id="${p}in-b" placeholder="a/b"><div class="fb" id="${p}fb-b"></div></div>
+    <div class="row" id="${p}r-ab"><label for="${p}in-ab"><span class="cab">P(A and B)</span> =</label><input id="${p}in-ab" placeholder="a/b"><div class="fb" id="${p}fb-ab"></div></div>
+    <div class="row" id="${p}r-or"><label for="${p}in-or">P(A or B) =</label><input id="${p}in-or" placeholder="a/b"><div class="fb" id="${p}fb-or"></div></div>
+    <div class="msg" id="${p}msg" hidden></div>
+    <div class="tools">
+      <button class="tbtn primary" type="button" id="${p}check">Check</button>
+      <button class="tbtn go" type="button" id="${p}next" hidden>Next problem →</button>
+    </div>
+  </div>`}
+function resetSheet(p){['a','b','ab','or'].forEach(k=>{$(p+'in-'+k).value='';$(p+'r-'+k).className='row';$(p+'fb-'+k).textContent=''});$(p+'msg').hidden=true;$(p+'next').hidden=true;$(p+'check').hidden=false}
+function grade(p,c,hints){
+  let all=true;const t={a:c.nA,b:c.nB,ab:c.nAB,or:c.nOr};
+  for(const k in t){const q=parse($(p+'in-'+k).value);let ok=false,msg;
+    if(q.err)msg=q.err;else if(q.n*c.N===t[k]*q.d){ok=true;msg='Correct'}
+    else if(k==='or'&&c.nAB>0&&q.n*c.N===(c.nA+c.nB)*q.d)msg='That\'s P(A) + P(B). The overlap got counted twice.';
+    else msg=hints[k];
+    $(p+'r-'+k).className='row '+(ok?'ok':'no');$(p+'fb-'+k).textContent=(ok?'✓ ':'✗ ')+msg;if(!ok)all=false}
+  return all;
+}
+function pill(t,ok,set){return `<span class="pill ${ok?'ok':set?'no':''}">${ok?'✓':set?'✗':'·'} ${t}</span>`}
+function chip(text,on,fn){const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=text;b.setAttribute('aria-pressed',on);b.onclick=fn;return b}
+document.querySelectorAll('.hint-btn').forEach(b=>b.onclick=()=>setHint(b,b.getAttribute('aria-expanded')!=='true'));
+function setHint(b,open){$(b.dataset.hint).classList.toggle('open',open);b.setAttribute('aria-expanded',open);b.textContent=open?'Hint ▴':'Hint ▾'}
+function closeHints(){document.querySelectorAll('.hint-btn').forEach(b=>setHint(b,false))}
+function setDots(n,i,label){$('progText').textContent=label;$('dots').innerHTML=Array.from({length:n},(_,k)=>`<i class="dot ${k<i?'done':k===i?'now':''}"></i>`).join('')}
+
+/* ---------- stepper ---------- */
+let view=1;
+const PREVIEW=location.hash==='#preview';
+function renderTabs(){
+  $('tab1').classList.toggle('done',progress.step1);$('tab2').classList.toggle('done',progress.step2);
+  $('tab2').disabled=!(progress.step1||PREVIEW);$('tab2').title=(progress.step1||PREVIEW)?'':'Finish Step 1 to unlock';
+  $('tab1').setAttribute('aria-current',view===1?'step':'false');$('tab2').setAttribute('aria-current',view===2?'step':'false');
+}
+function go(v){view=v;$('step1').hidden=v!==1;$('step2').hidden=v!==2;renderTabs();closeHints();
+  if(v===1)s1start();else s2start();window.scrollTo({top:0})}
+$('tab1').onclick=()=>go(1);$('tab2').onclick=()=>{if(progress.step1||PREVIEW)go(2)};
+if(PREVIEW){document.querySelector('.back').textContent='← All sections (teacher preview: all steps open)';new MutationObserver(()=>document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview')).observe(document.body,{childList:true,subtree:true});document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview');}
+
+/* ---------- STEP 1: dice and cards ---------- */
+const SUITS=[{s:'♠',n:'spade',red:false},{s:'♥',n:'heart',red:true},{s:'♦',n:'diamond',red:true},{s:'♣',n:'club',red:false}];
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SPACES={
+  dice:{name:'Two dice',title:'Two dice: 36 outcomes',unit:'square',setup:'You roll a red die and a blue die.',
+    outcomes:(()=>{const o=[];for(let r=1;r<=6;r++)for(let c=1;c<=6;c++)o.push({d1:r,d2:c,sum:r+c});return o})(),
+    events:[
+      {id:'s7',label:'Sum is 7',q:'The sum is 7.',f:o=>o.sum===7},
+      {id:'dbl',label:'Doubles',q:'You roll doubles.',f:o=>o.d1===o.d2},
+      {id:'six',label:'At least one 6',q:'At least one die shows a 6.',f:o=>o.d1===6||o.d2===6},
+      {id:'ge9',label:'Sum ≥ 9',q:'The sum is 9 or more.',f:o=>o.sum>=9},
+      {id:'even',label:'Sum is even',q:'The sum is even.',f:o=>o.sum%2===0},
+      {id:'r1e',label:'Red die is even',q:'The red die is even.',f:o=>o.d1%2===0},
+      {id:'le4',label:'Sum ≤ 4',q:'The sum is 4 or less.',f:o=>o.sum<=4},
+      {id:'s11',label:'Sum is 11',q:'The sum is 11.',f:o=>o.sum===11}]},
+  cards:{name:'Deck of cards',title:'Standard deck: 52 cards',unit:'card',setup:'You draw one card from a standard 52-card deck.',
+    outcomes:(()=>{const o=[];SUITS.forEach(s=>RANKS.forEach((r,i)=>o.push({rank:r,ri:i+1,suit:s})));return o})(),
+    events:[
+      {id:'heart',label:'Heart',q:'The card is a heart.',f:o=>o.suit.n==='heart'},
+      {id:'face',label:'Face card',q:'The card is a face card (J, Q or K).',f:o=>o.ri>=11},
+      {id:'red',label:'Red card',q:'The card is red.',f:o=>o.suit.red},
+      {id:'ace',label:'Ace',q:'The card is an ace.',f:o=>o.ri===1},
+      {id:'king',label:'King',q:'The card is a king.',f:o=>o.ri===13},
+      {id:'spade',label:'Spade',q:'The card is a spade.',f:o=>o.suit.n==='spade'},
+      {id:'low',label:'Number 2–5',q:'The card is a 2, 3, 4 or 5.',f:o=>o.ri>=2&&o.ri<=5},
+      {id:'black',label:'Black card',q:'The card is black.',f:o=>!o.suit.red}]}
+};
+function counts(sp,A,B){let nA=0,nB=0,nAB=0;SPACES[sp].outcomes.forEach(o=>{const x=A.f(o),y=B.f(o);nA+=x;nB+=y;nAB+=(x&&y)});return {N:SPACES[sp].outcomes.length,nA,nB,nAB,nOr:nA+nB-nAB}}
+const POOL={me:[],ov:[]};
+for(const sp in SPACES){const ev=SPACES[sp].events;ev.forEach(A=>ev.forEach(B=>{if(A===B)return;const c=counts(sp,A,B);
+  if(c.nAB===c.nA||c.nAB===c.nB)return;(c.nAB===0?POOL.me:POOL.ov).push({sp,A,B,...c})}))}
+
+$('s1sheetCard').innerHTML=`<div class="ans-split"><div>${sheetHTML('s1')}</div><div class="venn"><div class="panel-head"><h3>Venn diagram</h3></div><svg id="s1venn" viewBox="0 0 400 250" role="img" aria-label="Venn diagram"></svg><p class="note" id="s1vnote">Counts appear when all four answers are correct.</p></div></div>`;
+let s1={probs:[],i:0,cur:null,sel:{}};
+function s1start(){
+  let set;do{const me=rnd(POOL.me),ov=[];
+    while(ov.length<3){const p=rnd(POOL.ov);if(ov.some(q=>q.sp===p.sp&&((q.A===p.A&&q.B===p.B)||(q.A===p.B&&q.B===p.A))))continue;ov.push(p)}
+    set=[me,...ov]}while(!set.some(p=>p.sp==='dice')||!set.some(p=>p.sp==='cards'));
+  s1.probs=shuffle(set);s1.i=0;$('s1work').hidden=false;$('s1finish').hidden=true;s1load();
+}
+function s1load(){
+  const c=s1.cur=s1.probs[s1.i];c.solved=false;s1.sel={sp:null,A:null,B:null};
+  setDots(4,s1.i,`Problem ${s1.i+1} of 4`);
+  $('s1q').textContent=SPACES[c.sp].setup;
+  $('s1ev').innerHTML=`<li><b class="a">Event A:</b> ${c.A.q}</li><li><b class="b">Event B:</b> ${c.B.q}</li>`;
+  resetSheet('s1');closeHints();s1setup();
+}
+function s1setup(){
+  const sel=s1.sel,c=s1.cur;
+  const sc=$('s1chipsS');sc.innerHTML='';
+  for(const sp in SPACES)sc.appendChild(chip(SPACES[sp].name,sel.sp===sp,()=>{s1.sel={sp,A:null,B:null};s1setup()}));
+  ['A','B'].forEach(w=>{const box=$('s1chips'+w);box.innerHTML='';
+    if(!sel.sp){box.innerHTML='<span class="empty-note">Choose the situation first.</span>';return}
+    SPACES[sel.sp].events.forEach(ev=>box.appendChild(chip(ev.label,sel[w]===ev.id,()=>{sel[w]=ev.id;s1setup()})))});
+  const okS=sel.sp===c.sp,okA=okS&&sel.A===c.A.id,okB=okS&&sel.B===c.B.id;
+  $('s1status').innerHTML=pill('Situation',okS,!!sel.sp)+pill('Event A',okA,!!sel.A)+pill('Event B',okB,!!sel.B);
+  s1grid();s1venn(c.solved);
+}
+function s1grid(){
+  const w=$('s1grid'),sel=s1.sel;
+  if(!sel.sp){w.innerHTML='<div class="grid-empty">Choose a situation to see all the possible outcomes.</div>';$('s1title').textContent='Sample space';$('s1note').textContent='';return}
+  const S=SPACES[sel.sp],A=S.events.find(e=>e.id===sel.A),B=S.events.find(e=>e.id===sel.B);
+  const g=document.createElement('div');w.innerHTML='';w.appendChild(g);$('s1title').textContent=S.title;
+  const cell=(o,txt,extra)=>{const d=document.createElement('div');d.className='cell'+extra+(A&&A.f(o)?' inA':'')+(B&&B.f(o)?' inB':'');d.textContent=txt;if(o.sum)d.title='Sum '+o.sum;return d};
+  const ax=t=>Object.assign(document.createElement('div'),{className:'axis',textContent:t});
+  if(sel.sp==='dice'){g.className='grid dice';g.style.gridTemplateColumns='auto repeat(6,auto)';
+    g.appendChild(ax(''));for(let c=1;c<=6;c++)g.appendChild(ax('blue '+c));
+    S.outcomes.forEach(o=>{if(o.d2===1)g.appendChild(ax('red '+o.d1));g.appendChild(cell(o,`${o.d1},${o.d2}`,''))});
+    $('s1note').textContent='Rows are the red die, columns are the blue die. Hover a square to see its sum.';
+  }else{g.className='grid cards';g.style.gridTemplateColumns='repeat(13,minmax(0,1fr))';
+    S.outcomes.forEach(o=>g.appendChild(cell(o,o.rank+o.suit.s,o.suit.red?' red':'')));
+    $('s1note').textContent='One row per suit. Face cards are J, Q and K.'}
+}
+function s1venn(show){
+  const {nA,nB,nAB,N,nOr}=s1.cur,v=n=>show?n:'?';
+  $('s1venn').innerHTML=`<rect x="6" y="6" width="388" height="238" rx="12" fill="none" stroke="var(--line)" stroke-width="2"/>
+    <circle cx="155" cy="135" r="88" fill="var(--a-soft)" fill-opacity=".85" stroke="var(--a)" stroke-width="3"/>
+    <circle cx="245" cy="135" r="88" fill="var(--b-soft)" fill-opacity=".7" stroke="var(--b)" stroke-width="3"/>
+    <text x="110" y="36" font-size="15" style="fill:var(--a)">A</text><text x="282" y="36" font-size="15" style="fill:var(--b)">B</text>
+    <text x="115" y="142" font-size="26" text-anchor="middle">${v(nA-nAB)}</text>
+    <text x="200" y="142" font-size="26" text-anchor="middle" style="fill:var(--both)">${v(nAB)}</text>
+    <text x="285" y="142" font-size="26" text-anchor="middle">${v(nB-nAB)}</text>
+    <text x="370" y="232" font-size="15" text-anchor="end" style="fill:var(--muted)">neither: ${v(N-nOr)}</text>`;
+  $('s1vnote').hidden=show;
+}
+function s1check(){
+  const m=$('s1msg'),c=s1.cur,sel=s1.sel;
+  if(!(sel.sp===c.sp&&sel.A===c.A.id&&sel.B===c.B.id)){m.className='msg warn';m.textContent='First set the situation, Event A and Event B to match the problem. All three tags should show ✓.';m.hidden=false;return}
+  const u=SPACES[c.sp].unit;
+  const ok=grade('s1',c,{a:`Count every ${u} in A, including the striped ones.`,b:`Count every ${u} in B, including the striped ones.`,
+    ab:c.nAB===0?`Look for striped ${u}s. Are there any?`:`Count only the striped ${u}s. They are in both A and B.`,or:`Count every shaded ${u} once, or open the hint.`});
+  if(ok){c.solved=true;s1venn(true);m.className='msg good';m.textContent='All four correct!';m.hidden=false;
+    $('s1check').hidden=true;const n=$('s1next');n.hidden=false;n.textContent=s1.i<3?'Next problem →':'Finish Step 1 →';n.focus()}
+  else m.hidden=true;
+}
+$('s1check').onclick=s1check;
+['a','b','ab','or'].forEach(k=>$('s1in-'+k).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(!$('s1check').hidden)s1check()}}));
+$('s1next').onclick=()=>{s1.i++;if(s1.i<4)s1load();else s1finish()};
+function s1finish(){
+  progress.step1=true;save();renderTabs();setDots(4,4,'Step 1 complete');
+  const me=s1.probs.find(p=>p.nAB===0),n=s1.probs.indexOf(me)+1;
+  $('s1work').hidden=true;const f=$('s1finish');f.hidden=false;
+  f.innerHTML=`<div class="eyebrow">Step 1 complete</div><h2>You solved all 4 problems.</h2>
+    <div class="me-note"><p><b>Did you notice problem ${n}?</b> “${me.A.label}” and “${me.B.label}” can't happen at the same time. Events like that are called <b>mutually exclusive</b>. There are no striped outcomes, so P(A and B) = 0 and nothing gets double counted.</p>
+      <div class="frow">P(A or B) = ${me.nA}/${me.N} + ${me.nB}/${me.N} − 0 = ${me.nOr}/${me.N}</div>
+      <p>For mutually exclusive events you can just add: P(A or B) = P(A) + P(B).</p></div>
+    <div class="tools"><button class="tbtn go" type="button" id="s1to2">Go to Step 2: Two-way tables →</button></div>`;
+  $('s1to2').onclick=()=>go(2);
+}
+
+/* ---------- STEP 2: two-way tables ---------- */
+const TABLES=[
+  {title:'Animal shelter',intro:'An animal shelter records every animal by type and age. One animal is chosen at random.',
+   rowsLabel:'Type',colsLabel:'Age',
+   rows:[{n:'Dog',q:'The animal is a dog.'},{n:'Cat',q:'The animal is a cat.'},{n:'Rabbit',q:'The animal is a rabbit.'}],
+   cols:[{n:'Young',q:'The animal is young.'},{n:'Adult',q:'The animal is an adult.'},{n:'Senior',q:'The animal is a senior.'}],
+   data:[[18,30,12],[22,25,8],[5,9,1]]},
+  {title:'Getting to school',intro:'A school surveys students about their grade and how they usually get to school. One student is chosen at random.',
+   rowsLabel:'Grade',colsLabel:'Travel',
+   rows:[{n:'Freshman',q:'The student is a freshman.'},{n:'Sophomore',q:'The student is a sophomore.'},{n:'Junior',q:'The student is a junior.'}],
+   cols:[{n:'Car',q:'The student gets to school by car.'},{n:'Bus',q:'The student takes the bus.'},{n:'Walk/Bike',q:'The student walks or bikes.'}],
+   data:[[20,45,15],[32,30,18],[48,12,20]]},
+  {title:'Concert tickets',intro:'A concert venue records each ticket by ticket type and the buyer\'s age group. One ticket holder is chosen at random.',
+   rowsLabel:'Ticket',colsLabel:'Age',
+   rows:[{n:'General',q:'The person has a general ticket.'},{n:'VIP',q:'The person has a VIP ticket.'}],
+   cols:[{n:'Under 21',q:'The person is under 21.'},{n:'21 to 40',q:'The person is 21 to 40.'},{n:'Over 40',q:'The person is over 40.'}],
+   data:[[140,210,90],[10,35,15]]},
+  {title:'Library checkouts',intro:'A library records each checkout by format and the borrower\'s age group. One checkout is chosen at random.',
+   rowsLabel:'Format',colsLabel:'Age',
+   rows:[{n:'Print',q:'The checkout is a print book.'},{n:'E-book',q:'The checkout is an e-book.'},{n:'Audiobook',q:'The checkout is an audiobook.'}],
+   cols:[{n:'Under 18',q:'The borrower is under 18.'},{n:'18 to 64',q:'The borrower is 18 to 64.'},{n:'65+',q:'The borrower is 65 or older.'}],
+   data:[[40,55,35],[15,45,10],[5,30,15]]}
+];
+$('s2sheetCard').innerHTML=`<div class="ans-split"><div>${sheetHTML('s2')}</div><div class="guide venn" aria-label="Formula guide">  <div class="eyebrow">Formula guide</div>  <div class="g-item g-a"><h4>P(A)</h4><div class="eq"><span class="frac"><span class="top"><span class="tok a">row total</span></span><span class="tok g">grand total</span></span></div></div>  <div class="g-item g-b"><h4>P(B)</h4><div class="eq"><span class="frac"><span class="top"><span class="tok b">column total</span></span><span class="tok g">grand total</span></span></div></div>  <div class="g-item g-ab"><h4>P(A and B)</h4><div class="eq"><span class="frac"><span class="top"><span class="tok ab">crossing cell</span></span><span class="tok g">grand total</span></span></div></div>  <div class="g-item g-or"><h4>P(A or B)</h4><div class="eq"><span class="frac"><span class="top"><span class="tok a">row total</span><span class="op">+</span><span class="tok b">column total</span><span class="op">−</span><span class="tok ab">crossing cell</span></span><span class="tok g">grand total</span></span></div></div></div></div>`;
+let s2={probs:[],i:0,cur:null,sel:{r:null,c:null}};
+function s2start(){
+  s2.probs=shuffle(TABLES.slice()).slice(0,3).map(t=>{const r=Math.floor(Math.random()*t.rows.length),c=Math.floor(Math.random()*t.cols.length);
+    const rt=t.data.map(x=>x.reduce((a,b)=>a+b,0)),ct=t.cols.map((_,j)=>t.data.reduce((a,x)=>a+x[j],0)),N=rt.reduce((a,b)=>a+b,0);
+    const nA=rt[r],nB=ct[c],nAB=t.data[r][c];return {t,r,c,rt,ct,N,nA,nB,nAB,nOr:nA+nB-nAB}});
+  s2.i=0;$('s2work').hidden=false;$('s2finish').hidden=true;s2load();
+}
+function s2load(){
+  const p=s2.cur=s2.probs[s2.i];s2.sel={r:null,c:null};
+  setDots(3,s2.i,`Problem ${s2.i+1} of 3`);
+  $('s2q').textContent=p.t.intro;
+  $('s2ev').innerHTML=`<li><b class="a">Event A:</b> ${p.t.rows[p.r].q}</li><li><b class="b">Event B:</b> ${p.t.cols[p.c].q}</li>`;
+  $('s2title').textContent=p.t.title;resetSheet('s2');closeHints();s2table();
+}
+function s2table(){
+  const p=s2.cur,t=p.t,sel=s2.sel;
+  const cls=(i,j)=>[(sel.r===i?'inA':''),(sel.c===j?'inB':'')].join(' ');
+  let h=`<table class="tw"><thead><tr><th class="corner">${t.rowsLabel} ↓ / ${t.colsLabel} →</th>`;
+  t.cols.forEach((c,j)=>h+=`<th class="hdr ${sel.c===j?'inB':''}" tabindex="0" role="button" aria-pressed="${sel.c===j}" data-c="${j}">${c.n}</th>`);
+  h+=`<th class="totlabel">Total</th></tr></thead><tbody>`;
+  t.rows.forEach((r,i)=>{h+=`<tr><th class="hdr ${sel.r===i?'inA':''}" tabindex="0" role="button" aria-pressed="${sel.r===i}" data-r="${i}">${r.n}</th>`;
+    t.data[i].forEach((v,j)=>h+=`<td class="${cls(i,j)}">${v}</td>`);
+    h+=`<td class="tot ${sel.r===i?'inA':''}">${p.rt[i]}</td></tr>`});
+  h+=`<tr><th class="totlabel">Total</th>`;p.ct.forEach((v,j)=>h+=`<td class="tot ${sel.c===j?'inB':''}">${v}</td>`);
+  h+=`<td class="grand">${p.N}</td></tr></tbody></table>`;
+  $('s2table').innerHTML=h;
+  $('s2table').querySelectorAll('.hdr').forEach(el=>{
+    const act=()=>{if(el.dataset.r!==undefined)sel.r=+el.dataset.r;else sel.c=+el.dataset.c;s2table();
+      const again=$('s2table').querySelector(el.dataset.r!==undefined?`[data-r="${el.dataset.r}"]`:`[data-c="${el.dataset.c}"]`);if(again)again.focus()};
+    el.onclick=act;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}}});
+  const okA=sel.r===p.r,okB=sel.c===p.c;
+  $('s2status').innerHTML=pill('Event A',okA,sel.r!==null)+pill('Event B',okB,sel.c!==null);
+}
+function s2check(){
+  const m=$('s2msg'),p=s2.cur;
+  if(!(s2.sel.r===p.r&&s2.sel.c===p.c)){m.className='msg warn';m.textContent='First click the row for Event A and the column for Event B. Both tags should show ✓.';m.hidden=false;return}
+  const ok=grade('s2',p,{a:'Use the row total for A over the grand total.',b:'Use the column total for B over the grand total.',
+    ab:'Use the one striped cell where the row and column cross.',or:'Row total + column total − the crossing cell, all over the grand total.'});
+  if(ok){m.className='msg good';m.textContent='All four correct!';m.hidden=false;$('s2check').hidden=true;
+    const n=$('s2next');n.hidden=false;n.textContent=s2.i<2?'Next problem →':'Finish Section 2 →';n.focus()}
+  else m.hidden=true;
+}
+$('s2check').onclick=s2check;
+['a','b','ab','or'].forEach(k=>$('s2in-'+k).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(!$('s2check').hidden)s2check()}}));
+$('s2next').onclick=()=>{s2.i++;if(s2.i<3)s2load();else s2finish()};
+function s2finish(){
+  progress.step2=true;save();renderTabs();setDots(3,3,'Section 2 complete');
+  $('s2work').hidden=true;const f=$('s2finish');f.hidden=false;
+  f.innerHTML=`<div class="eyebrow">Section 2 complete</div><h2>Two-Way Tables: And / Or is done.</h2>
+    <p>You can find P(A), P(B), P(A and B) and P(A or B) from a sample space and from a two-way table. Your progress is saved on this device.</p>
+    <div class="tools"><a class="tbtn go" href="index.html">Back to all sections</a><button class="tbtn" type="button" id="s2again">Practice 3 more tables</button></div>`;
+  $('s2again').onclick=s2start;
+}
+
+/* ---------- boot ---------- */
+go(progress.step1&&!progress.step2?2:1);
+</script>
+</body>
+</html>
