@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mutually Exclusive and Independence</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: stepper + problem card on top, setup bar, then the visual (grid or table) left and answer sheet right; stacks on phones */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --ink:#18232b; --muted:#5b6b75; --line:#cfd8de;
+  --a:#1f6fd1; --a-soft:#cfe1fa; --b:#d9781a; --b-soft:#fbe0c4; --both:#7a3fb8; --both-soft:#ece0f8;
+  --empty:#f6f8f9; --good:#1d8a4f; --good-soft:#d6f0e1; --bad:#c23b3b; --bad-soft:#f8dddd; --suitred:#c62f3a;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; --suitred:#ff7b84; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; --suitred:#ff7b84; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-block:14px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:18px}
+.stack{display:grid;gap:18px}
+.back{color:var(--muted);text-decoration:none;font-weight:700;font-size:.9rem}
+.back:hover{color:var(--ink)}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
+header .stepper{margin-left:auto}
+.step{padding:6px 12px!important}
+.eyebrow{font:700 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.6rem,3.4vw,2.4rem);line-height:1.05;margin:2px 0 0;text-wrap:balance}
+.progress{display:flex;align-items:center;gap:10px;font:700 .9rem var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.dots{display:flex;gap:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.dot.now{border-color:var(--both)} .dot.done{background:var(--good);border-color:var(--good)}
+
+.stepper{display:flex;flex-wrap:wrap;gap:8px}
+.step{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 14px;font:700 .95rem var(--body);cursor:pointer;text-align:left}
+.step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-family:var(--mono);font-size:.85rem;flex:none}
+.step[aria-current="step"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.step.done .n{background:var(--good);color:var(--surface)}
+.step:disabled{opacity:.5;cursor:not-allowed}
+.step small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.stack,.wrap{gap:14px}
+.question{display:grid;gap:8px}
+#step2 .qtext{font-size:1.15rem}
+.qtext{font-family:var(--display);font-weight:600;font-size:clamp(1.1rem,2.3vw,1.4rem);line-height:1.3;margin:0;text-wrap:balance}
+.evlist{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:1.02rem}
+.evlist b.a{color:var(--a)} .evlist b.b{color:var(--b)}
+.find{font-weight:700}
+.hint-btn{justify-self:start;border:1.5px solid var(--both);background:none;color:var(--both);font:700 .9rem var(--body);padding:6px 14px;border-radius:999px;cursor:pointer}
+.hint-btn[aria-expanded="true"]{background:var(--both);color:var(--surface)}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.collapse.open{grid-template-rows:1fr}
+.collapse-inner{overflow:hidden;min-height:0;visibility:hidden;transition:visibility .3s}
+.collapse.open .collapse-inner{visibility:visible}
+.hint{background:var(--both-soft);border-radius:10px;padding:12px 14px;display:grid;gap:8px;margin-top:2px}
+.frow{font-family:var(--mono);font-weight:700;font-size:clamp(.82rem,2.1vw,1rem);overflow-x:auto;white-space:nowrap}
+.hint p{margin:0;max-width:65ch}
+.ca{color:var(--a)} .cb{color:var(--b)} .cab{color:var(--both)}
+
+.setup{display:grid;gap:12px;align-content:start}
+.setline{margin-bottom:10px}
+.setup-row{display:grid;grid-template-columns:6.5rem minmax(0,1fr);gap:10px;align-items:start}
+@media (max-width:600px){.setup-row{grid-template-columns:1fr;gap:6px}}
+.setup-label{font:700 .8rem var(--body);letter-spacing:.06em;text-transform:uppercase;padding-top:7px;display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.sw.a{background:var(--a)} .sw.b{background:var(--b)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:400 .93rem var(--body);padding:6px 12px;border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:700}
+.chipsA .chip[aria-pressed="true"]{background:var(--a);border-color:var(--a);color:#fff}
+.chipsB .chip[aria-pressed="true"]{background:var(--b);border-color:var(--b);color:#fff}
+.empty-note{color:var(--muted);font-size:.9rem;padding-top:6px}
+.status{display:flex;flex-wrap:wrap;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.pill{font:700 .82rem var(--body);padding:3px 10px;border-radius:999px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.pill.ok{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.pill.no{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
+
+.top2{display:grid;gap:14px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
+@media (max-width:900px){.top2{grid-template-columns:1fr}}
+.bench{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:1fr}}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.panel-head h3{margin:0;font-family:var(--display);font-weight:600;font-size:1.15rem}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg{width:14px;height:14px;border-radius:3px;border:1px solid var(--line)}
+.lg.a{background:var(--a-soft)} .lg.b{background:var(--b-soft)}
+.lg.ab{background:repeating-linear-gradient(135deg,var(--a-soft) 0 4px,var(--b-soft) 4px 8px)}
+.note{margin:10px 0 0;font-size:.85rem;color:var(--muted)}
+
+/* Step 1 grid */
+.grid-scroll{overflow-x:auto}
+.grid{display:grid;gap:4px;min-width:max-content}
+.grid-empty{color:var(--muted);padding:40px 12px;text-align:center;border:2px dashed var(--line);border-radius:10px}
+.cell{display:grid;place-items:center;border-radius:6px;border:1.5px solid var(--line);background:var(--empty);
+  font-family:var(--mono);font-weight:500;font-size:.8rem;transition:background .2s,border-color .2s;font-variant-numeric:tabular-nums}
+.dice .cell{width:52px;height:44px}
+.grid.cards{min-width:0;gap:3px}
+.cards .cell{aspect-ratio:5/6;min-width:0;font-size:clamp(.6rem,1.1vw,.8rem);border-radius:5px}
+@media (max-width:560px){.grid.cards{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(13,auto);grid-auto-flow:column;gap:4px}
+.cards .cell{aspect-ratio:auto;height:34px;font-size:.85rem}}
+.cell.red{color:var(--suitred)}
+.inA{background:var(--a-soft)!important;border-color:var(--a)!important}
+.inB{background:var(--b-soft)!important;border-color:var(--b)!important}
+.inA.inB{background:repeating-linear-gradient(135deg,var(--a-soft) 0 6px,var(--b-soft) 6px 12px)!important;border-color:var(--both)!important;border-width:2.5px!important}
+.axis{font:700 .75rem var(--body);color:var(--muted);display:grid;place-items:center}
+
+/* Step 2 table */
+.tw{border-collapse:separate;border-spacing:4px;font-variant-numeric:tabular-nums;margin:0 auto}
+.tw th,.tw td{border:1.5px solid var(--line);border-radius:8px;background:var(--empty);padding:10px 14px;text-align:center;font-family:var(--mono);font-size:1rem;transition:background .2s,border-color .2s}
+.tw thead th{font-family:var(--body);font-size:.9rem}
+.tw th.corner{background:none;border:none;font:400 .78rem var(--body);color:var(--muted);text-align:left}
+.tw .hdr{cursor:pointer;font-family:var(--body);font-weight:700}
+.tw .hdr:hover{border-color:var(--muted)}
+.tw .hdr:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.tw .tot{font-weight:700;background:var(--bg)}
+.tw .grand{border:2px dashed var(--both);color:var(--both);font-weight:700;background:var(--bg)}
+@media (max-width:560px){.tw th,.tw td{padding:8px 7px;font-size:.9rem}.tw thead th{font-size:.8rem}}
+.tw th.totlabel{background:var(--bg);font-family:var(--body);color:var(--muted);font-size:.85rem}
+
+.sheet{display:grid;gap:10px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.row label{font-family:var(--mono);font-weight:700;font-size:.95rem;min-width:8.8rem}
+.row input{width:7.5rem;max-width:100%;font:500 1.05rem var(--mono);padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.row input:focus-visible{outline:3px solid var(--both);outline-offset:1px}
+.row.ok input{border-color:var(--good);background:var(--good-soft)}
+.row.no input{border-color:var(--bad);background:var(--bad-soft)}
+.fb{flex-basis:100%;font-size:.88rem}
+.fb:empty{display:none}
+.row.ok .fb{color:var(--good)} .row.no .fb{color:var(--bad)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.tbtn{border:1.5px solid var(--ink);background:none;color:var(--ink);font:700 .95rem var(--body);padding:8px 16px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+.tbtn.primary{background:var(--ink);color:var(--bg)}
+.tbtn.go{background:var(--good);border-color:var(--good);color:var(--bg)}
+.tbtn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,a:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.msg{border-radius:10px;padding:10px 12px;font-weight:700}
+.msg.good{background:var(--good-soft);color:var(--good)}
+.msg.warn{background:var(--bad-soft);color:var(--bad)}
+
+.bench.s1{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}
+@media (max-width:900px){.bench.s1{grid-template-columns:1fr}}
+.ans-card{container-type:inline-size}
+.ans-split{display:grid;gap:16px}
+@container (min-width:430px){
+  .ans-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .ans-split .venn{margin-top:0;border-top:0;padding-top:0;border-left:1px dashed var(--line);padding-left:16px}
+  .ans-split .row{display:grid;grid-template-columns:minmax(0,1fr) 6rem}
+  .ans-split .row label{min-width:0;font-size:.85rem}
+  .ans-split .row input{width:6rem}
+  .ans-split .fb{grid-column:1/-1}
+}
+.guide{display:grid;gap:6px;align-content:start}
+.g-item{border-radius:8px;padding:6px 10px;border-left:5px solid var(--line);background:var(--bg);display:grid;gap:6px}
+.g-item h4{margin:0;font:700 .85rem var(--mono)}
+.guide .g-item{grid-template-columns:5.8rem minmax(0,1fr);align-items:center;padding:6px 10px}
+.guide .g-item .eq{justify-content:flex-start}
+.guide .g-item.g-or{grid-template-columns:1fr;gap:4px}
+.guide .g-item.g-or .eq{justify-content:center}
+.g-item .tok{font-size:.74rem;padding:0 6px}
+.g-item .eq{font-size:.8rem}
+.g-item p{margin:0;font-size:.85rem;color:var(--muted)}
+.g-a{border-color:var(--a);background:var(--a-soft)} .g-a h4{color:var(--a)}
+.g-b{border-color:var(--b);background:var(--b-soft)} .g-b h4{color:var(--b)}
+.g-ab{border-image:repeating-linear-gradient(180deg,var(--a) 0 6px,var(--b) 6px 12px) 1;background:var(--both-soft);border-radius:0 10px 10px 0} .g-ab h4{color:var(--both)}
+.g-or{border-color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-left:5px solid var(--ink)}
+.g-a p,.g-b p,.g-ab p{color:var(--ink)}
+.eq{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:.88rem}
+.frac{display:inline-grid;justify-items:center;gap:3px}
+.frac>.top{padding-bottom:3px;border-bottom:2px solid var(--ink);display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center}
+.tok{display:inline-block;padding:1px 8px;border-radius:6px;font-weight:700;font-size:.82rem;white-space:nowrap}
+.tok.a{background:var(--a);color:var(--surface)}
+.tok.b{background:var(--b);color:var(--surface)}
+.tok.ab{background:repeating-linear-gradient(135deg,var(--a-soft) 0 5px,var(--b-soft) 5px 10px);border:2px solid var(--both);color:var(--ink)}
+.tok.g{border:2px dashed var(--both);color:var(--both);background:var(--surface)}
+.op{font-weight:700}
+.venn{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.venn h4{margin:0 0 6px;font-family:var(--display);font-weight:600;font-size:1.05rem}
+.venn svg{width:100%;max-width:420px;height:auto;display:block}
+.venn text{font-family:var(--mono);font-weight:700;fill:var(--ink)}
+
+.finish{display:grid;gap:14px}
+.finish h2{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,3vw,2rem);margin:0}
+.finish p{margin:0;max-width:65ch}
+.me-note{border-left:4px solid var(--both);background:var(--both-soft);border-radius:0 10px 10px 0;padding:12px 14px;display:grid;gap:6px;max-width:760px}
+.me-note b{color:var(--both)}
+@media (prefers-reduced-motion:reduce){.cell,.collapse,.collapse-inner,.tw td,.tw th{transition:none}}
+
+/* Section 3 additions */
+.tw td.dim,.tw th.dim{opacity:.28}
+.tw .given{background:var(--b-soft)!important;border-color:var(--b)!important}
+.tw .target{background:var(--a-soft)!important;border-color:var(--a)!important}
+.tw .cross{background:repeating-linear-gradient(135deg,var(--a-soft) 0 6px,var(--b-soft) 6px 12px)!important;border-color:var(--both)!important;border-width:2.5px!important;font-weight:700}
+.tw .newtot{outline:2.5px dashed var(--both);outline-offset:-4px;color:var(--both);font-weight:700}
+.modebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;font-size:.88rem}
+.modebar .lbl{font-weight:700;color:var(--muted)}
+#chipsMode .chip[aria-pressed="true"].m-g{background:var(--b);border-color:var(--b);color:#fff}
+#chipsMode .chip[aria-pressed="true"].m-t{background:var(--a);border-color:var(--a);color:#fff}
+.qparts{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.qparts li{line-height:1.4}
+.qparts b{font-family:var(--mono)}
+.notation{font-family:var(--mono);font-weight:700;font-size:1.05rem}
+.notation .ca{color:var(--a)} .notation .cb{color:var(--b)}
+.tok.gv{background:var(--b-soft);border:2px dashed var(--both);color:var(--ink)}
+.compare{border-left:4px solid var(--both);background:var(--both-soft);border-radius:0 10px 10px 0;padding:10px 12px;font-size:.92rem}
+.compare b{color:var(--both)}
+.ans-split .row{display:grid;grid-template-columns:minmax(0,1fr) 5.6rem;align-items:center;gap:4px 10px}
+.ans-split .row label{min-width:0;font-size:.85rem;line-height:1.3}
+.ans-split .row input{width:5.6rem}
+.ans-split .fb{grid-column:1/-1}
+.guide .g-item{grid-template-columns:1fr!important;gap:3px!important}
+.guide .g-item .eq{justify-content:flex-start!important}
+.compare{font-size:1rem;padding:12px 14px}
+
+/* Section 4 additions */
+.choice{display:grid;gap:6px}
+.opt{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:400 .9rem/1.35 var(--body);padding:8px 12px;border-radius:10px;cursor:pointer;text-align:left;width:100%}
+.opt:hover{border-color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
+.opt.ok{border-color:var(--good)!important;background:var(--good-soft)!important;box-shadow:none}
+.opt.no{border-color:var(--bad)!important;background:var(--bad-soft)!important;box-shadow:none}
+.qlabel{font-weight:700;font-size:.92rem;margin:10px 0 6px}
+.cfb{font-size:.86rem;margin-top:4px}
+.cfb.ok{color:var(--good)} .cfb.no{color:var(--bad)}
+.evs{margin:0;padding:0;list-style:none;display:grid;gap:3px}
+.evs b.a{color:var(--a)} .evs b.b{color:var(--b)}
+.ask{font-weight:700;margin-top:4px}
+.ans-split{grid-template-columns:1fr!important}
+.ans-split .guide{border-left:0!important;padding-left:0!important;border-top:1px dashed var(--line)!important;padding-top:12px!important}
+.guide-card .eyebrow{margin-bottom:8px}
+.guide3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+@media (max-width:600px){.guide3{grid-template-columns:1fr}}
+.guide3 .g-item{padding:6px 8px}
+.guide3 .g-item h4{font-size:.8rem}
+.guide3 .g-item .eq{font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← All sections</a>
+  <header>
+    <div>
+      <div class="eyebrow">Section 4 · CP2U8 Probability Models</div>
+      <h1>Mutually Exclusive and Independence</h1>
+    </div>
+    <nav class="stepper" aria-label="Steps">
+      <button class="step" id="tab1" type="button"><span class="n">1</span><span>Mutually exclusive?<small>Look for overlap</small></span></button>
+      <button class="step" id="tab2" type="button"><span class="n">2</span><span>Independent?<small>Compare P(A | B) and P(A)</small></span></button>
+    </nav>
+    <div class="progress"><span id="progText"></span><div class="dots" id="dots"></div></div>
+  </header>
+
+  <div id="work" class="bench">
+    <div class="stack" style="min-width:0;gap:14px">
+      <section class="card">
+        <div class="panel-head">
+          <h3 id="tTitle">Two-way table</h3>
+          <div class="legend" id="legend"><span><i class="lg a"></i>A</span><span><i class="lg b"></i>B</span><span><i class="lg ab"></i>A and B</span></div>
+        </div>
+        <div class="grid-scroll" id="table"></div>
+        <p class="note" id="tNote"></p>
+      </section>
+      <div class="compare" id="compare" hidden></div>
+          <section class="card guide-card" aria-label="Formula guide">
+            <div class="eyebrow">Formula guide</div>
+            <div class="guide3">
+              <div class="g-item g-ab"><h4>Mutually exclusive</h4><div class="eq">P(A and B) = 0</div></div>
+              <div class="g-item g-a"><h4>Independent</h4><div class="eq">P(A | B) = P(A)</div></div>
+              <div class="g-item g-or"><h4>Watch out</h4><div class="eq">Mutually exclusive events are not independent.</div></div>
+            </section>
+    </div>
+
+    <div class="stack" style="min-width:0;gap:14px">
+      <section class="card question" aria-live="polite">
+        <p class="qtext" id="qtext" style="font-size:1.1rem"></p>
+        <div id="qbody"></div>
+        <button class="hint-btn" type="button" aria-expanded="false" data-hint="hintBox">Hint ▾</button>
+        <div class="collapse" id="hintBox"><div class="collapse-inner"><div class="hint" id="hintText"></div></div></div>
+      </section>
+      <section class="card ans-card">
+        <div class="ans-split">
+          <div>
+            <div class="panel-head"><h3>Your answers</h3></div>
+            <div class="sheet" id="sheet"></div>
+            <div class="qlabel" id="choiceLabel"></div>
+            <div class="choice" id="choice"></div>
+            <div class="cfb" id="cfb"></div>
+            <div class="msg" id="msg" hidden style="margin-top:10px"></div>
+            <div class="tools" style="margin-top:10px">
+              <button class="tbtn primary" type="button" id="btnCheck">Check</button>
+              <button class="tbtn go" type="button" id="btnNext" hidden>Next problem →</button>
+            </div>
+          </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <section class="card finish" id="finish" hidden></section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const KEY='cp2u8-section4';
+const PREVIEW=location.hash==='#preview';
+let progress={step1:false,step2:false};
+try{progress={...progress,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(progress))}catch(e){}}
+
+// ind: index of the row that is independent of both columns
+const TABLES=[
+ {title:'Smoothie taste test',intro:'A smoothie shop records each customer\'s favorite flavor and age group. One customer is chosen at random.',
+  rowsLabel:'Flavor',colsLabel:'Age',who:'customer',plural:'customers',
+  rows:[{n:'Lemon',q:'prefers lemon'},{n:'Berry',q:'prefers berry'},{n:'Grape',q:'prefers grape'}],
+  cols:[{n:'Teen',q:'is a teen'},{n:'Adult',q:'is an adult'}],data:[[30,20],[40,10],[20,30]],ind:0},
+ {title:'Gym members',intro:'A gym records each member\'s plan and when they usually work out. One member is chosen at random.',
+  rowsLabel:'Plan',colsLabel:'Time',who:'member',plural:'members',
+  rows:[{n:'Basic',q:'has the Basic plan'},{n:'Plus',q:'has the Plus plan'},{n:'Premium',q:'has the Premium plan'}],
+  cols:[{n:'Morning',q:'works out in the morning'},{n:'Evening',q:'works out in the evening'}],data:[[24,36],[30,20],[10,40]],ind:0},
+ {title:'Pet owners',intro:'A survey records each pet owner\'s main pet and where they live. One pet owner is chosen at random.',
+  rowsLabel:'Pet',colsLabel:'Home',who:'pet owner',plural:'pet owners',
+  rows:[{n:'Dog',q:'owns a dog'},{n:'Cat',q:'owns a cat'},{n:'Fish',q:'owns fish'}],
+  cols:[{n:'House',q:'lives in a house'},{n:'Apartment',q:'lives in an apartment'}],data:[[48,12],[30,20],[12,28]],ind:1},
+ {title:'Streaming users',intro:'A streaming service records each user\'s main device and plan. One user is chosen at random.',
+  rowsLabel:'Device',colsLabel:'Plan',who:'user',plural:'users',
+  rows:[{n:'Phone',q:'watches mostly on a phone'},{n:'TV',q:'watches mostly on a TV'},{n:'Laptop',q:'watches mostly on a laptop'}],
+  cols:[{n:'Free',q:'has the free plan'},{n:'Paid',q:'has a paid plan'}],data:[[35,15],[15,35],[30,30]],ind:2},
+ {title:'Spring athletes',intro:'A school records each spring athlete\'s sport and class. One athlete is chosen at random.',
+  rowsLabel:'Sport',colsLabel:'Class',who:'athlete',plural:'athletes',
+  rows:[{n:'Softball',q:'plays softball'},{n:'Tennis',q:'plays tennis'},{n:'Track',q:'runs track'}],
+  cols:[{n:'Underclass',q:'is a freshman or sophomore'},{n:'Upperclass',q:'is a junior or senior'}],data:[[21,9],[9,21],[25,25]],ind:2}
+];
+const DRIVE={title:'Driving survey',intro:'A high school surveys students about driving. It records each student\'s driving status and age. One student is chosen at random.',
+  rowsLabel:'Status',colsLabel:'Age',who:'student',plural:'students',
+  rows:[{n:'License',q:'has a driver\'s license'},{n:'Permit',q:'has a learner\'s permit'},{n:'Neither',q:'has neither'}],
+  cols:[{n:'14 to 15',q:'is 14 or 15'},{n:'16 to 17',q:'is 16 or 17'},{n:'18+',q:'is 18 or older'}],data:[[0,40,12],[10,25,3],[50,15,5]]};
+const STEPS={1:{n:3},2:{n:3}};
+let step=1,probs=[],idx=0,cur=null,picked=null,focusMode=null;
+
+/* ---------- helpers ---------- */
+function totals(t){const rt=t.data.map(x=>x.reduce((a,b)=>a+b,0)),ct=t.cols.map((_,j)=>t.data.reduce((a,x)=>a+x[j],0));return {rt,ct,N:rt.reduce((a,b)=>a+b,0)}}
+function parseFrac(s){
+  s=s.trim();const m=s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if(m){const d=+m[2];return d===0?{err:'The bottom of a fraction can\'t be 0.'}:{v:+m[1]/d}}
+  if(/^\d+$/.test(s))return {v:+s};
+  if(s==='')return {err:'Type a fraction.'};
+  return {err:'Type it as a fraction, like 30/90.'};
+}
+function parseNum(s){s=s.trim();if(s==='')return {err:'Type a number.'};if(/^\d+$/.test(s))return {v:+s};return {err:'Type a whole number.'}}
+const eq=(a,b)=>Math.abs(a-b)<1e-9;
+const dec=x=>(Math.round(x*1000)/1000).toFixed(3).replace(/^0/,'0');
+function setDots(){const n=STEPS[step].n;$('progText').textContent=`Problem ${idx+1} of ${n}`;
+  $('dots').innerHTML=Array.from({length:n},(_,k)=>`<i class="dot ${k<idx?'done':k===idx?'now':''}"></i>`).join('')}
+document.querySelectorAll('.hint-btn').forEach(b=>b.onclick=()=>setHint(b,b.getAttribute('aria-expanded')!=='true'));
+function setHint(b,open){$(b.dataset.hint).classList.toggle('open',open);b.setAttribute('aria-expanded',open);b.textContent=open?'Hint ▴':'Hint ▾'}
+function closeHints(){document.querySelectorAll('.hint-btn').forEach(b=>setHint(b,false))}
+
+/* ---------- stepper ---------- */
+function renderTabs(){for(let s=1;s<=2;s++){const t=$('tab'+s);t.classList.toggle('done',!!progress['step'+s]);t.disabled=false;t.setAttribute('aria-current',step===s?'step':'false')}}
+function go(s){step=s;renderTabs();start();window.scrollTo({top:0})}
+for(let s=1;s<=2;s++)$('tab'+s).onclick=()=>go(s);
+
+/* ---------- problem building ---------- */
+// event: {a:'r'|'c', i}
+function ev(t,e){const h=e.a==='r'?t.rows[e.i]:t.cols[e.i];return {...e,n:h.n,q:h.q}}
+function mkME(t,kind){
+  const T=totals(t);let A,B;
+  if(kind==='same'){
+    const axis=Math.random()<.5&&t.cols.length>2?'c':'r';const len=axis==='r'?t.rows.length:t.cols.length;
+    const [i,j]=shuffle([...Array(len).keys()]);A={a:axis,i};B={a:axis,i:j};
+  }else{
+    let r,c;do{r=Math.floor(Math.random()*t.rows.length);c=Math.floor(Math.random()*t.cols.length)}while(kind==='zero'?t.data[r][c]!==0:t.data[r][c]===0);
+    A={a:'r',i:r};B={a:'c',i:c};
+  }
+  const overlap=A.a===B.a?0:t.data[A.i][B.i];
+  return {t,...T,A:ev(t,A),B:ev(t,B),kind,overlap,me:overlap===0};
+}
+function mkIND(t,wantInd){
+  const T=totals(t);let r;
+  if(wantInd===true)r=t.ind;else if(wantInd===false){do{r=Math.floor(Math.random()*t.rows.length)}while(r===t.ind)}else r=Math.floor(Math.random()*t.rows.length);
+  const c=Math.floor(Math.random()*t.cols.length);
+  const pA=T.rt[r]/T.N,pAB=t.data[r][c]/T.ct[c];
+  return {t,...T,A:ev(t,{a:'r',i:r}),B:ev(t,{a:'c',i:c}),cell:t.data[r][c],pA,pAB,ind:eq(pA,pAB)};
+}
+function start(){
+  const ts=shuffle(TABLES.slice());
+  if(step===1)probs=shuffle([mkME(ts[0],'rc'),mkME(ts[1],'same'),mkME(DRIVE,'zero')]);
+  else probs=shuffle([mkIND(ts[0],true),mkIND(ts[1],false),mkIND(ts[2],null)]);
+  idx=0;$('work').hidden=false;$('finish').hidden=true;load();
+}
+
+/* ---------- choices ---------- */
+function meOptions(p){
+  const A=p.A.n,B=p.B.n,pl=p.t.plural,w=p.t.who;
+  let right,wrong;
+  if(!p.me){
+    right=`No. ${p.overlap} ${pl} are both ${A} and ${B}, so the two events can happen at the same time.`;
+    wrong=[`Yes. ${A} and ${B} are different categories, so they can't both happen.`,
+           `Yes. P(${A}) and P(${B}) are not equal, so the events can't happen together.`];
+  }else if(p.kind==='same'){
+    right=`Yes. A ${w} can't be both ${A} and ${B} at the same time, so P(${A} and ${B}) = 0.`;
+    wrong=[`No. Some ${pl} are ${A} and some are ${B}, so the events overlap.`,
+           `No. P(${A}) and P(${B}) are both greater than 0, so both can happen.`];
+  }else{
+    right=`Yes. The ${A} and ${B} cell is 0. No ${pl} are in both groups, so P(${A} and ${B}) = 0.`;
+    wrong=[`No. P(${A}) and P(${B}) are both greater than 0, so both can happen.`,
+           `No. ${A} is a row and ${B} is a column, so they always overlap.`];
+  }
+  return shuffle([{t:right,ok:true},...wrong.map(t=>({t,ok:false}))]);
+}
+function indOptions(p){
+  const A=p.A.n,B=p.B.n,w=p.t.who;
+  const yes=`Yes. P(${A} | ${B}) = P(${A}), so knowing the ${w} ${p.B.q} does not change the chance the ${w} ${p.A.q}.`;
+  const no=`No. P(${A} | ${B}) ≠ P(${A}), so knowing the ${w} ${p.B.q} changes the chance the ${w} ${p.A.q}.`;
+  const d=rnd([`Yes. ${A} and ${B} are not mutually exclusive, so they must be independent.`,
+               `No. P(${A} and ${B}) is not 0, so the events depend on each other.`]);
+  return shuffle([{t:yes,ok:p.ind},{t:no,ok:!p.ind},{t:d,ok:false}]);
+}
+
+/* ---------- load ---------- */
+function load(){
+  const p=cur=probs[idx];picked=null;focusMode=null;setDots();closeHints();
+  $('tTitle').textContent=p.t.title;$('qtext').textContent=p.t.intro;
+  const evs=`<ul class="evs"><li><b class="a">Event A:</b> The ${p.t.who} ${p.A.q}.</li><li><b class="b">Event B:</b> The ${p.t.who} ${p.B.q}.</li></ul>`;
+  if(step===1){
+    $('qbody').innerHTML=evs+'<div class="ask">Are events A and B mutually exclusive? Explain.</div>';
+    $('sheet').innerHTML=rowHTML('ov',`Count of <span class="cab">${p.A.n} and ${p.B.n}</span> =`,'#');
+    $('choiceLabel').textContent='Mutually exclusive? Choose the best answer.';
+    p.opts=meOptions(p);
+    $('hintText').innerHTML=`<p><b>Mutually exclusive</b> means the events can't happen at the same time. Look for the overlap: ${p.t.plural} who are in <b>both</b> A and B.</p><p>A row and a column overlap in one cell. Two rows (or two columns) never share a cell, because each ${p.t.who} is in only one.</p>`;
+    $('tNote').textContent='A is shaded blue, B is shaded orange. Striped means both.';
+    $('legend').hidden=false;
+  }else{
+    $('qbody').innerHTML=evs+'<div class="ask">Are events A and B independent? Use probability to decide.</div>';
+    $('sheet').innerHTML=rowHTML('pa',`<span class="ca">P(${p.A.n})</span> =`,'a/b')+rowHTML('pab',`P(${p.A.n} | ${p.B.n}) =`,'a/b');
+    $('choiceLabel').textContent='Independent? Choose the best explanation.';
+    p.opts=indOptions(p);
+    $('hintText').innerHTML=`<p><b>P(${p.A.n})</b> = the ${p.A.n} row total ÷ the grand total.</p><p><b>P(${p.A.n} | ${p.B.n})</b> = the crossing cell ÷ the ${p.B.n} column total.</p><p>If the two are equal, knowing B doesn't change the chance of A, so the events are independent. Divide each one to compare decimals.</p>`;
+    $('tNote').textContent='Click into an answer box to see which part of the table it uses.';
+    $('legend').hidden=true;
+  }
+  $('sheet').querySelectorAll('input').forEach(i=>{
+    i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(!$('btnCheck').hidden)check()}});
+    i.addEventListener('focus',()=>{if(step===2){focusMode=i.id.slice(3);renderTable()}});
+  });
+  renderChoices();
+  $('cfb').textContent='';$('cfb').className='cfb';
+  $('msg').hidden=true;$('compare').hidden=true;$('btnNext').hidden=true;$('btnCheck').hidden=false;
+  renderTable();
+}
+function rowHTML(id,label,ph){return `<div class="row" id="r-${id}"><label for="in-${id}">${label.replace(/ =$/,'&nbsp;=')}</label><input id="in-${id}" placeholder="${ph}" inputmode="${ph==='#'?'numeric':'text'}"><div class="fb" id="fb-${id}"></div></div>`}
+function renderChoices(){
+  const box=$('choice');box.innerHTML='';
+  cur.opts.forEach((o,k)=>{const b=document.createElement('button');b.type='button';b.className='opt';b.textContent=o.t;b.setAttribute('aria-pressed',picked===k);
+    b.onclick=()=>{picked=k;$('cfb').textContent='';renderChoices()};box.appendChild(b)});
+}
+
+/* ---------- table ---------- */
+function renderTable(){
+  const p=cur,t=p.t;let cls=()=>'',hcls=()=>'',tot={r:()=>'',c:()=>'',g:'grand'};
+  if(step===1){
+    const inE=(e,i,j)=>e.a==='r'?i===e.i:j===e.i;
+    cls=(i,j)=>{const a=inE(p.A,i,j),b=inE(p.B,i,j);return a&&b?'cross':a?'target':b?'given':''};
+    hcls=(ax,i)=>(p.A.a===ax&&p.A.i===i)?'target':(p.B.a===ax&&p.B.i===i)?'given':'';
+  }else if(focusMode==='pa'){
+    cls=(i,j)=>i===p.A.i?'target':'dim';hcls=(ax,i)=>(ax==='r'&&i===p.A.i)?'target':'';
+    tot={r:i=>i===p.A.i?'target':'dim',c:()=>'dim',g:'grand'};
+  }else if(focusMode==='pab'){
+    cls=(i,j)=>j!==p.B.i?'dim':i===p.A.i?'cross':'given';hcls=(ax,i)=>(ax==='c'&&i===p.B.i)?'given':(ax==='r'&&i===p.A.i)?'target':'';
+    tot={r:()=>'dim',c:j=>j===p.B.i?'given newtot':'dim',g:'tot dim'};
+  }
+  let h=`<table class="tw"><thead><tr><th class="corner">${t.rowsLabel} ↓ / ${t.colsLabel} →</th>`;
+  t.cols.forEach((c,j)=>h+=`<th class="hdr ${hcls('c',j)}" style="cursor:default">${c.n}</th>`);
+  h+=`<th class="totlabel">Total</th></tr></thead><tbody>`;
+  t.rows.forEach((r,i)=>{h+=`<tr><th class="hdr ${hcls('r',i)}" style="cursor:default">${r.n}</th>`;
+    t.data[i].forEach((v,j)=>h+=`<td class="${cls(i,j)}">${v}</td>`);h+=`<td class="tot ${tot.r(i)}">${p.rt[i]}</td></tr>`});
+  h+=`<tr><th class="totlabel">Total</th>`;p.ct.forEach((v,j)=>h+=`<td class="tot ${tot.c(j)}">${v}</td>`);
+  h+=`<td class="${tot.g}">${p.N}</td></tr></tbody></table>`;
+  $('table').innerHTML=h;
+}
+
+/* ---------- checking ---------- */
+function mark(id,ok,msg){$('r-'+id).className='row '+(ok?'ok':'no');$('fb-'+id).textContent=(ok?'✓ ':'✗ ')+msg;return ok}
+function check(){
+  const p=cur,m=$('msg');let all=true;
+  if(step===1){
+    const x=parseNum($('in-ov').value);
+    all&=mark('ov',!x.err&&x.v===p.overlap,x.err||(x.v===p.overlap?'Correct':p.kind==='same'?`Each ${p.t.who} is in only one ${p.A.a==='r'?'row':'column'}. No cell is in both, so the count is 0.`:`Use the one cell where the ${p.A.n} row and the ${p.B.n} column cross.`));
+  }else{
+    let x=parseFrac($('in-pa').value);
+    all&=mark('pa',!x.err&&eq(x.v,p.pA),x.err||(eq(x.v,p.pA)?'Correct':eq(x.v,p.cell/p.N)?`That's P(${p.A.n} and ${p.B.n}). P(${p.A.n}) uses the whole row total.`:eq(x.v,p.ct[p.B.i]/p.N)?`That's P(${p.B.n}). Use the ${p.A.n} row total.`:`The ${p.A.n} row total ÷ the grand total.`));
+    x=parseFrac($('in-pab').value);
+    all&=mark('pab',!x.err&&eq(x.v,p.pAB),x.err||(eq(x.v,p.pAB)?'Correct':eq(x.v,p.cell/p.N)?`That's P(${p.A.n} and ${p.B.n}). "Given ${p.B.n}" changes the bottom to the ${p.B.n} total.`:eq(x.v,p.cell/p.rt[p.A.i])?`That's P(${p.B.n} | ${p.A.n}), the other direction. Divide by the ${p.B.n} total.`:`The crossing cell ÷ the ${p.B.n} column total.`));
+  }
+  const cf=$('cfb');
+  if(picked===null){cf.className='cfb no';cf.textContent='✗ Choose an answer.';all=false}
+  else{const ok=p.opts[picked].ok;cf.className='cfb '+(ok?'ok':'no');
+    cf.textContent=ok?'✓ Correct':(step===1?'✗ Check the overlap count. Mutually exclusive means it is 0.':'✗ Compare your two fractions. Are they equal? Then pick the reason that uses them.');
+    $('choice').querySelectorAll('.opt')[picked].classList.add(ok?'ok':'no');if(!ok)all=false}
+  if(all){
+    const n=STEPS[step].n;m.className='msg good';m.textContent=idx<n-1?'All correct!':'All correct! That was the last one.';m.hidden=false;
+    const c=$('compare');
+    if(step===1)c.innerHTML=p.me?`<b>Mutually exclusive:</b> P(${p.A.n} and ${p.B.n}) = 0/${p.N} = 0. There is no overlap.`:`<b>Not mutually exclusive:</b> P(${p.A.n} and ${p.B.n}) = ${p.overlap}/${p.N}. That overlap isn't 0.`;
+    else c.innerHTML=`<b>${p.ind?'Independent':'Not independent'}:</b> P(${p.A.n}) = ${p.rt[p.A.i]}/${p.N} ≈ ${dec(p.pA)} and P(${p.A.n} | ${p.B.n}) = ${p.cell}/${p.ct[p.B.i]} ≈ ${dec(p.pAB)}. ${p.ind?'They are equal.':`Knowing the ${p.t.who} ${p.B.q} makes ${p.A.n} ${p.pAB>p.pA?'more':'less'} likely.`}`;
+    c.hidden=false;
+    $('choice').querySelectorAll('.opt').forEach(b=>b.disabled=true);
+    $('btnCheck').hidden=true;const nb=$('btnNext');nb.hidden=false;nb.textContent=idx<n-1?'Next problem →':`Finish Step ${step} →`;nb.focus();
+  }else m.hidden=true;
+}
+$('btnCheck').onclick=check;
+$('btnNext').onclick=()=>{idx++;if(idx<STEPS[step].n)load();else finishStep()};
+
+function finishStep(){
+  progress['step'+step]=true;save();renderTabs();
+  const n=STEPS[step].n;$('progText').textContent=`Step ${step} complete`;$('dots').innerHTML=Array.from({length:n},()=>'<i class="dot done"></i>').join('');
+  $('work').hidden=true;const f=$('finish');f.hidden=false;
+  if(step===1){
+    f.innerHTML=`<div class="eyebrow">Step 1 complete</div><h2>Mutually exclusive means no overlap.</h2>
+      <div class="me-note"><p><b>In a two-way table:</b> two rows (or two columns) are always mutually exclusive, because each person is in only one. A row and a column are mutually exclusive only if the cell where they cross is 0.</p>
+      <div class="frow">Mutually exclusive ⟺ P(A and B) = 0</div></div>
+      <div class="tools"><button class="tbtn go" type="button" id="toNext">Go to Step 2: Independent? →</button></div>`;
+    $('toNext').onclick=()=>go(2);
+  }else{
+    f.innerHTML=`<div class="eyebrow">Section 4 complete</div><h2>Mutually Exclusive and Independence is done.</h2>
+      <div class="me-note"><p><b>They are not the same thing.</b> Independent means knowing B doesn't change the chance of A: P(A | B) = P(A). Mutually exclusive means A and B can't both happen. If A and B are mutually exclusive, knowing B happened makes P(A | B) = 0, so they can't be independent.</p></div>
+      <p>Your progress is saved on this device.</p>
+      <div class="tools"><a class="tbtn go" href="index.html">Back to all sections</a><button class="tbtn" type="button" id="again">Practice 3 more</button></div>`;
+    $('again').onclick=()=>go(2);
+  }
+}
+
+/* ---------- boot ---------- */
+if(PREVIEW){const fix=()=>document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview');fix();
+  new MutationObserver(fix).observe(document.body,{childList:true,subtree:true});}
+go(progress.step1&&!progress.step2?2:1);
+</script>
+</body>
+</html>

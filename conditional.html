@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Conditional Probability</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: stepper + problem card on top, setup bar, then the visual (grid or table) left and answer sheet right; stacks on phones */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --ink:#18232b; --muted:#5b6b75; --line:#cfd8de;
+  --a:#1f6fd1; --a-soft:#cfe1fa; --b:#d9781a; --b-soft:#fbe0c4; --both:#7a3fb8; --both-soft:#ece0f8;
+  --empty:#f6f8f9; --good:#1d8a4f; --good-soft:#d6f0e1; --bad:#c23b3b; --bad-soft:#f8dddd; --suitred:#c62f3a;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; --suitred:#ff7b84; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a20; --surface:#1a242c; --ink:#e7edf1; --muted:#97a7b2; --line:#2d3b46;
+  --a:#6aa8f5; --a-soft:#1f3b5e; --b:#f0a253; --b-soft:#4e3218; --both:#b98af0; --both-soft:#2e2142; --empty:#161f26;
+  --good:#5fd394; --good-soft:#173a28; --bad:#ff8a8a; --bad-soft:#4a1f22; --suitred:#ff7b84; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-block:14px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:18px}
+.stack{display:grid;gap:18px}
+.back{color:var(--muted);text-decoration:none;font-weight:700;font-size:.9rem}
+.back:hover{color:var(--ink)}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
+header .stepper{margin-left:auto}
+.step{padding:6px 12px!important}
+.eyebrow{font:700 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.6rem,3.4vw,2.4rem);line-height:1.05;margin:2px 0 0;text-wrap:balance}
+.progress{display:flex;align-items:center;gap:10px;font:700 .9rem var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.dots{display:flex;gap:6px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.dot.now{border-color:var(--both)} .dot.done{background:var(--good);border-color:var(--good)}
+
+.stepper{display:flex;flex-wrap:wrap;gap:8px}
+.step{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 14px;font:700 .95rem var(--body);cursor:pointer;text-align:left}
+.step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-family:var(--mono);font-size:.85rem;flex:none}
+.step[aria-current="step"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.step.done .n{background:var(--good);color:var(--surface)}
+.step:disabled{opacity:.5;cursor:not-allowed}
+.step small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.stack,.wrap{gap:14px}
+.question{display:grid;gap:8px}
+#step2 .qtext{font-size:1.15rem}
+.qtext{font-family:var(--display);font-weight:600;font-size:clamp(1.1rem,2.3vw,1.4rem);line-height:1.3;margin:0;text-wrap:balance}
+.evlist{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:1.02rem}
+.evlist b.a{color:var(--a)} .evlist b.b{color:var(--b)}
+.find{font-weight:700}
+.hint-btn{justify-self:start;border:1.5px solid var(--both);background:none;color:var(--both);font:700 .9rem var(--body);padding:6px 14px;border-radius:999px;cursor:pointer}
+.hint-btn[aria-expanded="true"]{background:var(--both);color:var(--surface)}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.collapse.open{grid-template-rows:1fr}
+.collapse-inner{overflow:hidden;min-height:0;visibility:hidden;transition:visibility .3s}
+.collapse.open .collapse-inner{visibility:visible}
+.hint{background:var(--both-soft);border-radius:10px;padding:12px 14px;display:grid;gap:8px;margin-top:2px}
+.frow{font-family:var(--mono);font-weight:700;font-size:clamp(.82rem,2.1vw,1rem);overflow-x:auto;white-space:nowrap}
+.hint p{margin:0;max-width:65ch}
+.ca{color:var(--a)} .cb{color:var(--b)} .cab{color:var(--both)}
+
+.setup{display:grid;gap:12px;align-content:start}
+.setline{margin-bottom:10px}
+.setup-row{display:grid;grid-template-columns:6.5rem minmax(0,1fr);gap:10px;align-items:start}
+@media (max-width:600px){.setup-row{grid-template-columns:1fr;gap:6px}}
+.setup-label{font:700 .8rem var(--body);letter-spacing:.06em;text-transform:uppercase;padding-top:7px;display:flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.sw.a{background:var(--a)} .sw.b{background:var(--b)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:400 .93rem var(--body);padding:6px 12px;border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:700}
+.chipsA .chip[aria-pressed="true"]{background:var(--a);border-color:var(--a);color:#fff}
+.chipsB .chip[aria-pressed="true"]{background:var(--b);border-color:var(--b);color:#fff}
+.empty-note{color:var(--muted);font-size:.9rem;padding-top:6px}
+.status{display:flex;flex-wrap:wrap;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.pill{font:700 .82rem var(--body);padding:3px 10px;border-radius:999px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.pill.ok{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.pill.no{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
+
+.top2{display:grid;gap:14px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch}
+@media (max-width:900px){.top2{grid-template-columns:1fr}}
+.bench{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.bench{grid-template-columns:1fr}}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.panel-head h3{margin:0;font-family:var(--display);font-weight:600;font-size:1.15rem}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg{width:14px;height:14px;border-radius:3px;border:1px solid var(--line)}
+.lg.a{background:var(--a-soft)} .lg.b{background:var(--b-soft)}
+.lg.ab{background:repeating-linear-gradient(135deg,var(--a-soft) 0 4px,var(--b-soft) 4px 8px)}
+.note{margin:10px 0 0;font-size:.85rem;color:var(--muted)}
+
+/* Step 1 grid */
+.grid-scroll{overflow-x:auto}
+.grid{display:grid;gap:4px;min-width:max-content}
+.grid-empty{color:var(--muted);padding:40px 12px;text-align:center;border:2px dashed var(--line);border-radius:10px}
+.cell{display:grid;place-items:center;border-radius:6px;border:1.5px solid var(--line);background:var(--empty);
+  font-family:var(--mono);font-weight:500;font-size:.8rem;transition:background .2s,border-color .2s;font-variant-numeric:tabular-nums}
+.dice .cell{width:52px;height:44px}
+.grid.cards{min-width:0;gap:3px}
+.cards .cell{aspect-ratio:5/6;min-width:0;font-size:clamp(.6rem,1.1vw,.8rem);border-radius:5px}
+@media (max-width:560px){.grid.cards{grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(13,auto);grid-auto-flow:column;gap:4px}
+.cards .cell{aspect-ratio:auto;height:34px;font-size:.85rem}}
+.cell.red{color:var(--suitred)}
+.inA{background:var(--a-soft)!important;border-color:var(--a)!important}
+.inB{background:var(--b-soft)!important;border-color:var(--b)!important}
+.inA.inB{background:repeating-linear-gradient(135deg,var(--a-soft) 0 6px,var(--b-soft) 6px 12px)!important;border-color:var(--both)!important;border-width:2.5px!important}
+.axis{font:700 .75rem var(--body);color:var(--muted);display:grid;place-items:center}
+
+/* Step 2 table */
+.tw{border-collapse:separate;border-spacing:4px;font-variant-numeric:tabular-nums;margin:0 auto}
+.tw th,.tw td{border:1.5px solid var(--line);border-radius:8px;background:var(--empty);padding:10px 14px;text-align:center;font-family:var(--mono);font-size:1rem;transition:background .2s,border-color .2s}
+.tw thead th{font-family:var(--body);font-size:.9rem}
+.tw th.corner{background:none;border:none;font:400 .78rem var(--body);color:var(--muted);text-align:left}
+.tw .hdr{cursor:pointer;font-family:var(--body);font-weight:700}
+.tw .hdr:hover{border-color:var(--muted)}
+.tw .hdr:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.tw .tot{font-weight:700;background:var(--bg)}
+.tw .grand{border:2px dashed var(--both);color:var(--both);font-weight:700;background:var(--bg)}
+@media (max-width:560px){.tw th,.tw td{padding:8px 7px;font-size:.9rem}.tw thead th{font-size:.8rem}}
+.tw th.totlabel{background:var(--bg);font-family:var(--body);color:var(--muted);font-size:.85rem}
+
+.sheet{display:grid;gap:10px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.row label{font-family:var(--mono);font-weight:700;font-size:.95rem;min-width:8.8rem}
+.row input{width:7.5rem;max-width:100%;font:500 1.05rem var(--mono);padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.row input:focus-visible{outline:3px solid var(--both);outline-offset:1px}
+.row.ok input{border-color:var(--good);background:var(--good-soft)}
+.row.no input{border-color:var(--bad);background:var(--bad-soft)}
+.fb{flex-basis:100%;font-size:.88rem}
+.fb:empty{display:none}
+.row.ok .fb{color:var(--good)} .row.no .fb{color:var(--bad)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.tbtn{border:1.5px solid var(--ink);background:none;color:var(--ink);font:700 .95rem var(--body);padding:8px 16px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+.tbtn.primary{background:var(--ink);color:var(--bg)}
+.tbtn.go{background:var(--good);border-color:var(--good);color:var(--bg)}
+.tbtn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,a:focus-visible{outline:3px solid var(--both);outline-offset:2px}
+.msg{border-radius:10px;padding:10px 12px;font-weight:700}
+.msg.good{background:var(--good-soft);color:var(--good)}
+.msg.warn{background:var(--bad-soft);color:var(--bad)}
+
+.bench.s1{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}
+@media (max-width:900px){.bench.s1{grid-template-columns:1fr}}
+.ans-card{container-type:inline-size}
+.ans-split{display:grid;gap:16px}
+@container (min-width:430px){
+  .ans-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .ans-split .venn{margin-top:0;border-top:0;padding-top:0;border-left:1px dashed var(--line);padding-left:16px}
+  .ans-split .row{display:grid;grid-template-columns:minmax(0,1fr) 6rem}
+  .ans-split .row label{min-width:0;font-size:.85rem}
+  .ans-split .row input{width:6rem}
+  .ans-split .fb{grid-column:1/-1}
+}
+.guide{display:grid;gap:6px;align-content:start}
+.g-item{border-radius:8px;padding:6px 10px;border-left:5px solid var(--line);background:var(--bg);display:grid;gap:6px}
+.g-item h4{margin:0;font:700 .85rem var(--mono)}
+.guide .g-item{grid-template-columns:5.8rem minmax(0,1fr);align-items:center;padding:6px 10px}
+.guide .g-item .eq{justify-content:flex-start}
+.guide .g-item.g-or{grid-template-columns:1fr;gap:4px}
+.guide .g-item.g-or .eq{justify-content:center}
+.g-item .tok{font-size:.74rem;padding:0 6px}
+.g-item .eq{font-size:.8rem}
+.g-item p{margin:0;font-size:.85rem;color:var(--muted)}
+.g-a{border-color:var(--a);background:var(--a-soft)} .g-a h4{color:var(--a)}
+.g-b{border-color:var(--b);background:var(--b-soft)} .g-b h4{color:var(--b)}
+.g-ab{border-image:repeating-linear-gradient(180deg,var(--a) 0 6px,var(--b) 6px 12px) 1;background:var(--both-soft);border-radius:0 10px 10px 0} .g-ab h4{color:var(--both)}
+.g-or{border-color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-left:5px solid var(--ink)}
+.g-a p,.g-b p,.g-ab p{color:var(--ink)}
+.eq{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:.88rem}
+.frac{display:inline-grid;justify-items:center;gap:3px}
+.frac>.top{padding-bottom:3px;border-bottom:2px solid var(--ink);display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center}
+.tok{display:inline-block;padding:1px 8px;border-radius:6px;font-weight:700;font-size:.82rem;white-space:nowrap}
+.tok.a{background:var(--a);color:var(--surface)}
+.tok.b{background:var(--b);color:var(--surface)}
+.tok.ab{background:repeating-linear-gradient(135deg,var(--a-soft) 0 5px,var(--b-soft) 5px 10px);border:2px solid var(--both);color:var(--ink)}
+.tok.g{border:2px dashed var(--both);color:var(--both);background:var(--surface)}
+.op{font-weight:700}
+.venn{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.venn h4{margin:0 0 6px;font-family:var(--display);font-weight:600;font-size:1.05rem}
+.venn svg{width:100%;max-width:420px;height:auto;display:block}
+.venn text{font-family:var(--mono);font-weight:700;fill:var(--ink)}
+
+.finish{display:grid;gap:14px}
+.finish h2{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,3vw,2rem);margin:0}
+.finish p{margin:0;max-width:65ch}
+.me-note{border-left:4px solid var(--both);background:var(--both-soft);border-radius:0 10px 10px 0;padding:12px 14px;display:grid;gap:6px;max-width:760px}
+.me-note b{color:var(--both)}
+@media (prefers-reduced-motion:reduce){.cell,.collapse,.collapse-inner,.tw td,.tw th{transition:none}}
+
+/* Section 3 additions */
+.tw td.dim,.tw th.dim{opacity:.28}
+.tw .given{background:var(--b-soft)!important;border-color:var(--b)!important}
+.tw .target{background:var(--a-soft)!important;border-color:var(--a)!important}
+.tw .cross{background:repeating-linear-gradient(135deg,var(--a-soft) 0 6px,var(--b-soft) 6px 12px)!important;border-color:var(--both)!important;border-width:2.5px!important;font-weight:700}
+.tw .newtot{outline:2.5px dashed var(--both);outline-offset:-4px;color:var(--both);font-weight:700}
+.modebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;font-size:.88rem}
+.modebar .lbl{font-weight:700;color:var(--muted)}
+#chipsMode .chip[aria-pressed="true"].m-g{background:var(--b);border-color:var(--b);color:#fff}
+#chipsMode .chip[aria-pressed="true"].m-t{background:var(--a);border-color:var(--a);color:#fff}
+.qparts{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.qparts li{line-height:1.4}
+.qparts b{font-family:var(--mono)}
+.notation{font-family:var(--mono);font-weight:700;font-size:1.05rem}
+.notation .ca{color:var(--a)} .notation .cb{color:var(--b)}
+.tok.gv{background:var(--b-soft);border:2px dashed var(--both);color:var(--ink)}
+.compare{border-left:4px solid var(--both);background:var(--both-soft);border-radius:0 10px 10px 0;padding:10px 12px;font-size:.92rem}
+.compare b{color:var(--both)}
+.ans-split .row{display:grid;grid-template-columns:minmax(0,1fr) 5.6rem;align-items:center;gap:4px 10px}
+.ans-split .row label{min-width:0;font-size:.85rem;line-height:1.3}
+.ans-split .row input{width:5.6rem}
+.ans-split .fb{grid-column:1/-1}
+.guide .g-item{grid-template-columns:1fr!important;gap:3px!important}
+.guide .g-item .eq{justify-content:flex-start!important}
+.compare{font-size:1rem;padding:12px 14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← All sections</a>
+  <header>
+    <div>
+      <div class="eyebrow">Section 3 · CP2U8 Probability Models</div>
+      <h1>Conditional Probability</h1>
+    </div>
+    <nav class="stepper" aria-label="Steps">
+      <button class="step" id="tab1" type="button"><span class="n">1</span><span>Find the given<small>Zoom into a row or column</small></span></button>
+      <button class="step" id="tab2" type="button"><span class="n">2</span><span>Both directions<small>Test-style practice</small></span></button>
+    </nav>
+    <div class="progress"><span id="progText"></span><div class="dots" id="dots"></div></div>
+  </header>
+
+  <div id="work" class="bench">
+    <div class="stack" style="min-width:0;gap:14px">
+      <section class="card">
+        <div class="panel-head">
+          <h3 id="tTitle">Two-way table</h3>
+          <div class="legend" id="legend"><span><i class="lg b"></i>Given</span><span><i class="lg a"></i>Event</span><span><i class="lg ab"></i>Both</span></div>
+        </div>
+        <div id="setup">
+          <div class="modebar"><span class="lbl">Clicking a label sets:</span><div class="chips" id="chipsMode"></div></div>
+          <div class="status" id="status" style="border:0;padding:0;margin-bottom:10px"></div>
+        </div>
+        <div class="grid-scroll" id="table"></div>
+        <p class="note" id="tNote"></p>
+      </section>
+      <div class="compare" id="compare" hidden></div>
+    </div>
+
+    <div class="stack" style="min-width:0;gap:14px">
+      <section class="card question" aria-live="polite">
+        <p class="qtext" id="qtext" style="font-size:1.1rem"></p>
+        <div id="qbody"></div>
+        <button class="hint-btn" type="button" aria-expanded="false" data-hint="hintBox">Hint ▾</button>
+        <div class="collapse" id="hintBox"><div class="collapse-inner"><div class="hint">
+          <p>The word <b>given</b> (or the bar <b>|</b>) tells you which row or column to zoom into. Everything outside it is ignored.</p>
+          <p>The <b class="cb">given</b> row or column total becomes the new bottom of the fraction. The top is the cell where the event and the given cross.</p>
+          <p>P(A | B) and P(B | A) have the same top number but different bottoms.</p>
+        </div></div></div>
+      </section>
+      <section class="card ans-card">
+        <div class="ans-split">
+          <div>
+            <div class="panel-head"><h3>Your answers</h3></div>
+            <div class="sheet" id="sheet"></div>
+            <div class="msg" id="msg" hidden style="margin-top:10px"></div>
+            <div class="tools" style="margin-top:10px">
+              <button class="tbtn primary" type="button" id="btnCheck">Check</button>
+              <button class="tbtn go" type="button" id="btnNext" hidden>Next problem →</button>
+            </div>
+          </div>
+          <div class="guide venn" aria-label="Formula guide">
+            <div class="eyebrow">Formula guide</div>
+            <div class="g-item g-ab"><h4>P(A | B)</h4><div class="eq"><span class="frac"><span class="top"><span class="tok ab">crossing cell</span></span><span class="tok gv">given total</span></span></div></div>
+            <div class="g-item"><h4>Read it</h4><div class="eq">"probability of A <b>given</b> B"</div></div>
+            <div class="g-item g-or"><h4>Watch out</h4><div class="eq">P(A | B) ≠ P(B | A).</div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <section class="card finish" id="finish" hidden></section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const KEY='cp2u8-section3';
+const PREVIEW=location.hash==='#preview';
+let progress={step1:false,step2:false};
+try{progress={...progress,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(progress))}catch(e){}}
+
+const TABLES=[
+ {title:'Hospital volunteers',intro:'A hospital records its volunteers by role and age. One volunteer is chosen at random.',
+  rowsLabel:'Role',colsLabel:'Age',
+  rows:[{n:'Front desk',q:'works the front desk'},{n:'Escort',q:'is a patient escort'},{n:'Gift shop',q:'works in the gift shop'}],
+  cols:[{n:'Under 30',q:'is under 30'},{n:'30 to 60',q:'is 30 to 60'},{n:'Over 60',q:'is over 60'}],
+  who:'the volunteer',data:[[24,18,30],[36,22,10],[8,14,28]]},
+ {title:'Summer camp',intro:'A summer camp records each camper by activity and age group. One camper is chosen at random.',
+  rowsLabel:'Activity',colsLabel:'Age',
+  rows:[{n:'Swimming',q:'chose swimming'},{n:'Hiking',q:'chose hiking'},{n:'Art',q:'chose art'}],
+  cols:[{n:'Kids',q:'is a kid (8 to 12)'},{n:'Teens',q:'is a teen (13 to 17)'}],
+  who:'the camper',data:[[45,30],[20,35],[25,15]]},
+ {title:'Phones by grade',intro:'A school surveys students about their grade and the kind of phone they have. One student is chosen at random.',
+  rowsLabel:'Phone',colsLabel:'Grade',
+  rows:[{n:'iPhone',q:'has an iPhone'},{n:'Android',q:'has an Android'}],
+  cols:[{n:'Freshman',q:'is a freshman'},{n:'Sophomore',q:'is a sophomore'},{n:'Junior',q:'is a junior'},{n:'Senior',q:'is a senior'}],
+  who:'the student',data:[[60,55,70,65],[40,35,30,25]]},
+ {title:'Lunch orders',intro:'A food truck records each lunch order by meal and drink. One order is chosen at random.',
+  rowsLabel:'Meal',colsLabel:'Drink',
+  rows:[{n:'Burger',q:'is a burger'},{n:'Salad',q:'is a salad'},{n:'Tacos',q:'is tacos'}],
+  cols:[{n:'Soda',q:'comes with soda'},{n:'Water',q:'comes with water'},{n:'Juice',q:'comes with juice'}],
+  who:'the order',data:[[30,12,8],[10,25,5],[20,15,15]]},
+ {title:'Favorite movies',intro:'A theater surveys moviegoers about their favorite genre and age. One moviegoer is chosen at random.',
+  rowsLabel:'Genre',colsLabel:'Age',
+  rows:[{n:'Comedy',q:'prefers comedy'},{n:'Action',q:'prefers action'},{n:'Horror',q:'prefers horror'}],
+  cols:[{n:'Under 18',q:'is under 18'},{n:'18+',q:'is 18 or older'}],
+  who:'the moviegoer',data:[[42,38],[50,30],[28,12]]}
+];
+const STEPS={1:{n:3},2:{n:3}};
+let step=1,probs=[],idx=0,cur=null,sel={g:null,t:null},mode='g';
+
+/* ---------- helpers ---------- */
+function parseFrac(s){
+  s=s.trim();const m=s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if(m){const d=+m[2];return d===0?{err:'The bottom of a fraction can\'t be 0.'}:{n:+m[1],d,v:+m[1]/d}}
+  if(/^\d+$/.test(s))return {n:+s,d:1,v:+s};
+  if(s==='')return {err:'Type a fraction.'};
+  return {err:'Type it as a fraction, like 12/50.'};
+}
+function parseNum(s){s=s.trim();if(s==='')return {err:'Type a number.'};if(/^\d+$/.test(s))return {v:+s};return {err:'Type a whole number.'}}
+const eq=(a,b)=>Math.abs(a-b)<1e-9;
+function pill(t,ok,set){return `<span class="pill ${ok?'ok':set?'no':''}">${ok?'✓':set?'✗':'·'} ${t}</span>`}
+function setDots(){const n=STEPS[step].n;$('progText').textContent=`Problem ${idx+1} of ${n}`;
+  $('dots').innerHTML=Array.from({length:n},(_,k)=>`<i class="dot ${k<idx?'done':k===idx?'now':''}"></i>`).join('')}
+document.querySelectorAll('.hint-btn').forEach(b=>b.onclick=()=>setHint(b,b.getAttribute('aria-expanded')!=='true'));
+function setHint(b,open){$(b.dataset.hint).classList.toggle('open',open);b.setAttribute('aria-expanded',open);b.textContent=open?'Hint ▴':'Hint ▾'}
+function closeHints(){document.querySelectorAll('.hint-btn').forEach(b=>setHint(b,false))}
+
+/* ---------- stepper ---------- */
+function unlocked(s){return true}
+function renderTabs(){for(let s=1;s<=2;s++){const t=$('tab'+s);t.classList.toggle('done',!!progress['step'+s]);t.disabled=!unlocked(s);
+  t.title=unlocked(s)?'':`Finish Step ${s-1} to unlock`;t.setAttribute('aria-current',step===s?'step':'false')}}
+function go(s){step=s;renderTabs();start();window.scrollTo({top:0})}
+for(let s=1;s<=2;s++)$('tab'+s).onclick=()=>{if(unlocked(s))go(s)};
+
+/* ---------- problems ---------- */
+function makeProblem(t){
+  const rt=t.data.map(x=>x.reduce((a,b)=>a+b,0)),ct=t.cols.map((_,j)=>t.data.reduce((a,x)=>a+x[j],0)),N=rt.reduce((a,b)=>a+b,0);
+  let r,c;do{r=Math.floor(Math.random()*t.rows.length);c=Math.floor(Math.random()*t.cols.length)}while(rt[r]===ct[c]);
+  return {t,r,c,rt,ct,N,cell:t.data[r][c],gAxis:Math.random()<.5?'r':'c'};
+}
+// a "view" of the problem for one direction: given axis gA
+function dir(p,gA){
+  const t=p.t,isR=gA==='r';
+  const G=isR?t.rows[p.r]:t.cols[p.c],T=isR?t.cols[p.c]:t.rows[p.r];
+  return {gA,gi:isR?p.r:p.c,tA:isR?'c':'r',ti:isR?p.c:p.r,G:G.n,T:T.n,Gq:G.q,Tq:T.q,
+    gTot:isR?p.rt[p.r]:p.ct[p.c],tTot:isR?p.ct[p.c]:p.rt[p.r],gKind:isR?'row':'column'};
+}
+function start(){
+  probs=shuffle(TABLES.slice()).slice(0,STEPS[step].n).map(makeProblem);idx=0;
+  $('work').hidden=false;$('finish').hidden=true;load();
+}
+function load(){
+  const p=cur=probs[idx];sel={g:null,t:null};mode='g';setDots();closeHints();
+  $('tTitle').textContent=p.t.title;
+  $('qtext').textContent=p.t.intro;
+  const w=p.t.who;
+  if(step===1){
+    const d=dir(p,p.gAxis);
+    $('qbody').innerHTML=`<ul class="qparts"><li>Given that ${w} <b class="cb" style="font-family:inherit">${d.Gq}</b>, what is the probability that ${w} <b class="ca" style="font-family:inherit">${d.Tq}</b>?</li></ul>
+      <div class="notation">Find P(<span class="ca">${d.T}</span> | <span class="cb">${d.G}</span>)</div>`;
+    $('setup').hidden=false;$('legend').hidden=false;
+    $('tNote').innerHTML='Set the <b class="cb">given</b> first. Then set the <b class="ca">event</b>.';
+    p.dirs=[d];
+    $('sheet').innerHTML=rowHTML('gt',`<span class="cb">${d.G}</span> total =`,'a number')+rowHTML('ct',`<span class="cab">${d.T} and ${d.G}</span> =`,'a number')+rowHTML('pr',`P(${d.T} | ${d.G}) =`,'a/b');
+  }else{
+    const ds=shuffle([dir(p,'c'),dir(p,'r')]);p.dirs=ds;
+    $('qbody').innerHTML=`<ul class="qparts">${ds.map((d,i)=>`<li><b>${'ab'[i]})</b> Given that ${w} ${d.Gq}, what is the probability that ${w} ${d.Tq}?</li>`).join('')}</ul>`;
+    $('setup').hidden=true;$('legend').hidden=true;
+    $('tNote').textContent='The dashed purple number is the grand total.';
+    $('sheet').innerHTML=ds.map((d,i)=>rowHTML('d'+i,`${'ab'[i]}) P(${d.T} | ${d.G}) =`,'a/b')).join('');
+  }
+  $('sheet').querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(!$('btnCheck').hidden)check()}}));
+  $('msg').hidden=true;$('compare').hidden=true;$('btnNext').hidden=true;$('btnCheck').hidden=false;
+  renderModes();renderTable();
+}
+function rowHTML(id,label,ph){return `<div class="row" id="r-${id}"><label for="in-${id}">${label.replace(/ =$/,'&nbsp;=')}</label><input id="in-${id}" placeholder="${ph==='a number'?'#':'a/b'}" inputmode="${ph==='a number'?'numeric':'text'}"><div class="fb" id="fb-${id}"></div></div>`}
+
+/* ---------- setup + table ---------- */
+function renderModes(){
+  const box=$('chipsMode');box.innerHTML='';
+  [['g','Given','m-g'],['t','Event','m-t']].forEach(([m,txt,cls])=>{const b=document.createElement('button');b.type='button';b.className='chip '+cls;b.textContent=txt;b.setAttribute('aria-pressed',mode===m);b.onclick=()=>{mode=m;renderModes()};box.appendChild(b)});
+  if(step!==1)return;
+  const d=cur.dirs[0],okG=sel.g&&sel.g.a===d.gA&&sel.g.i===d.gi,okT=sel.t&&sel.t.a===d.tA&&sel.t.i===d.ti;
+  $('status').innerHTML=pill('Given',okG,!!sel.g)+pill('Event',okT,!!sel.t);
+}
+function renderTable(){
+  const p=cur,t=p.t,g=step===1?sel.g:null,tg=step===1?sel.t:null;
+  const inG=(i,j)=>g&&(g.a==='r'?i===g.i:j===g.i);
+  const isCross=(i,j)=>g&&tg&&g.a!==tg.a&&(g.a==='r'?(i===g.i&&j===tg.i):(j===g.i&&i===tg.i));
+  const cellCls=(i,j)=>!g?'':(isCross(i,j)?'cross':inG(i,j)?'given':'dim');
+  const hdrCls=(a,i)=>(g&&g.a===a&&g.i===i)?'given':(tg&&tg.a===a&&tg.i===i)?'target':'';
+  const click=step===1;
+  let h=`<table class="tw"><thead><tr><th class="corner">${t.rowsLabel} ↓ / ${t.colsLabel} →</th>`;
+  t.cols.forEach((c,j)=>h+=`<th class="hdr ${hdrCls('c',j)}" ${click?'tabindex="0" role="button"':''} data-a="c" data-i="${j}">${c.n}</th>`);
+  h+=`<th class="totlabel ${g?'dim':''}">Total</th></tr></thead><tbody>`;
+  t.rows.forEach((r,i)=>{h+=`<tr><th class="hdr ${hdrCls('r',i)}" ${click?'tabindex="0" role="button"':''} data-a="r" data-i="${i}">${r.n}</th>`;
+    t.data[i].forEach((v,j)=>h+=`<td class="${cellCls(i,j)}">${v}</td>`);
+    h+=`<td class="tot ${!g?'':(g.a==='r'&&g.i===i)?'given newtot':'dim'}">${p.rt[i]}</td></tr>`});
+  h+=`<tr><th class="totlabel ${g?'dim':''}">Total</th>`;p.ct.forEach((v,j)=>h+=`<td class="tot ${!g?'':(g.a==='c'&&g.i===j)?'given newtot':'dim'}">${v}</td>`);
+  h+=`<td class="${g?'tot dim':'grand'}">${p.N}</td></tr></tbody></table>`;
+  $('table').innerHTML=h;
+  if(!click)return;
+  $('table').querySelectorAll('.hdr').forEach(el=>{
+    const act=()=>{const v={a:el.dataset.a,i:+el.dataset.i};
+      if(mode==='g'){sel.g=v;if(sel.t&&sel.t.a===v.a)sel.t=null;mode='t'}else{sel.t=v;if(sel.g&&sel.g.a===v.a&&sel.g.i===v.i)sel.g=null}
+      renderModes();renderTable();const again=$('table').querySelector(`.hdr[data-a="${v.a}"][data-i="${v.i}"]`);if(again)again.focus()};
+    el.onclick=act;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}}});
+}
+
+/* ---------- checking ---------- */
+function fracHint(p,d,v){
+  if(eq(v,p.cell/p.N))return `That's P(${d.T} and ${d.G}). "Given ${d.G}" changes the bottom to the ${d.G} total.`;
+  if(eq(v,p.cell/d.tTot))return `That's P(${d.G} | ${d.T}), the other direction. Divide by the ${d.G} total.`;
+  if(eq(v,d.gTot/p.N))return `That's P(${d.G}). The top should be the cell where ${d.T} and ${d.G} cross.`;
+  if(eq(v,d.tTot/p.N))return `That's P(${d.T}) out of everyone. Zoom into the ${d.G} ${d.gKind} only.`;
+  return `Crossing cell ÷ the ${d.G} ${d.gKind} total.`;
+}
+function mark(id,ok,msg){$('r-'+id).className='row '+(ok?'ok':'no');$('fb-'+id).textContent=(ok?'✓ ':'✗ ')+msg;return ok}
+function check(){
+  const p=cur,m=$('msg');let all=true;
+  if(step===1){
+    const d=p.dirs[0],okG=sel.g&&sel.g.a===d.gA&&sel.g.i===d.gi,okT=sel.t&&sel.t.a===d.tA&&sel.t.i===d.ti;
+    if(!(okG&&okT)){m.className='msg warn';m.textContent=!okG?`Set the given first. The given is what comes after "given that": ${d.G}.`:`Now set the event: the thing you're finding the probability of.`;m.hidden=false;return}
+    let x=parseNum($('in-gt').value);
+    all&=mark('gt',!x.err&&x.v===d.gTot,x.err||(x.v===d.gTot?'Correct':x.v===p.N?`Given narrows the total. Use only the ${d.G} ${d.gKind} total.`:x.v===d.tTot?`That's the ${d.T} total. Use the total for the given, ${d.G}.`:`Look at the end of the ${d.G} ${d.gKind}.`));
+    x=parseNum($('in-ct').value);
+    all&=mark('ct',!x.err&&x.v===p.cell,x.err||(x.v===p.cell?'Correct':`Use the one striped cell where ${d.T} and ${d.G} cross.`));
+    x=parseFrac($('in-pr').value);
+    all&=mark('pr',!x.err&&eq(x.v,p.cell/d.gTot),x.err||(eq(x.v,p.cell/d.gTot)?'Correct':fracHint(p,d,x.v)));
+  }else{
+    p.dirs.forEach((d,i)=>{const x=parseFrac($('in-d'+i).value);
+      all&=mark('d'+i,!x.err&&eq(x.v,p.cell/d.gTot),x.err||(eq(x.v,p.cell/d.gTot)?'Correct':fracHint(p,d,x.v)))});
+  }
+  if(all){
+    const n=STEPS[step].n;m.className='msg good';m.textContent=idx<n-1?'All correct!':'All correct! That was the last one.';m.hidden=false;
+    const a=dir(p,'c'),b=dir(p,'r');
+    $('compare').innerHTML=`<b>Compare:</b> P(${a.T} | ${a.G}) = ${p.cell}/${a.gTot}, but P(${b.T} | ${b.G}) = ${p.cell}/${b.gTot}. Same top (${p.cell}), different bottoms. The given decides the bottom.`;
+    $('compare').hidden=false;
+    $('btnCheck').hidden=true;const nb=$('btnNext');nb.hidden=false;nb.textContent=idx<n-1?'Next problem →':`Finish Step ${step} →`;nb.focus();
+  }else m.hidden=true;
+}
+$('btnCheck').onclick=check;
+$('btnNext').onclick=()=>{idx++;if(idx<STEPS[step].n)load();else finishStep()};
+
+function finishStep(){
+  progress['step'+step]=true;save();renderTabs();
+  const n=STEPS[step].n;$('progText').textContent=`Step ${step} complete`;$('dots').innerHTML=Array.from({length:n},()=>'<i class="dot done"></i>').join('');
+  $('work').hidden=true;const f=$('finish');f.hidden=false;
+  if(step===1){
+    f.innerHTML=`<div class="eyebrow">Step 1 complete</div><h2>You found the given ${n} times.</h2>
+      <div class="me-note"><p><b>The given is the new total.</b> "Given that" (or the bar |) tells you to zoom into one row or column. Its total goes on the bottom, and the crossing cell goes on top.</p>
+      <div class="frow">P(A | B) = (A and B) ÷ (B total)</div></div>
+      <div class="tools"><button class="tbtn go" type="button" id="toNext">Go to Step 2: Both directions →</button></div>`;
+    $('toNext').onclick=()=>go(2);
+  }else{
+    f.innerHTML=`<div class="eyebrow">Section 3 complete</div><h2>Conditional Probability is done.</h2>
+      <p>You can find P(A | B) and P(B | A) from a two-way table and explain why they're different. Your progress is saved on this device.</p>
+      <div class="tools"><a class="tbtn go" href="index.html">Back to all sections</a><button class="tbtn" type="button" id="again">Practice 3 more</button></div>`;
+    $('again').onclick=()=>go(2);
+  }
+}
+
+/* ---------- boot ---------- */
+if(PREVIEW){document.querySelector('.back').textContent='← All sections (teacher preview: all steps open)';
+  const fix=()=>document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview');fix();
+  new MutationObserver(fix).observe(document.body,{childList:true,subtree:true});}
+go(progress.step1&&!progress.step2?2:1);
+</script>
+</body>
+</html>

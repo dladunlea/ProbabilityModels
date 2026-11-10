@@ -262,7 +262,7 @@ let step=1,probs=[],idx=0,cur=null,stage='p',hl=[];
 
 /* ---------- stepper ---------- */
 const PREVIEW=location.hash==='#preview';
-function unlocked(s){return PREVIEW||s===1||progress['step'+(s-1)]}
+function unlocked(s){return true}
 function renderTabs(){
   for(let s=1;s<=NSTEPS;s++){const t=$('tab'+s);t.classList.toggle('done',!!progress['step'+s]);t.disabled=!unlocked(s);
     t.title=unlocked(s)?'':`Finish Step ${s-1} to unlock`;t.setAttribute('aria-current',step===s?'step':'false')}

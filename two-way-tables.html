@@ -348,12 +348,12 @@ let view=1;
 const PREVIEW=location.hash==='#preview';
 function renderTabs(){
   $('tab1').classList.toggle('done',progress.step1);$('tab2').classList.toggle('done',progress.step2);
-  $('tab2').disabled=!(progress.step1||PREVIEW);$('tab2').title=(progress.step1||PREVIEW)?'':'Finish Step 1 to unlock';
+  $('tab2').disabled=false;$('tab2').title='';
   $('tab1').setAttribute('aria-current',view===1?'step':'false');$('tab2').setAttribute('aria-current',view===2?'step':'false');
 }
 function go(v){view=v;$('step1').hidden=v!==1;$('step2').hidden=v!==2;renderTabs();closeHints();
   if(v===1)s1start();else s2start();window.scrollTo({top:0})}
-$('tab1').onclick=()=>go(1);$('tab2').onclick=()=>{if(progress.step1||PREVIEW)go(2)};
+$('tab1').onclick=()=>go(1);$('tab2').onclick=()=>go(2);
 if(PREVIEW){document.querySelector('.back').textContent='← All sections (teacher preview: all steps open)';new MutationObserver(()=>document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview')).observe(document.body,{childList:true,subtree:true});document.querySelectorAll('a[href="index.html"]').forEach(a=>a.href='index.html#preview');}
 
 /* ---------- STEP 1: dice and cards ---------- */

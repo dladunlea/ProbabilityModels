@@ -55,12 +55,12 @@ a.sec:focus-visible{outline:3px solid var(--both);outline-offset:2px}
   <ol>
     <li><a class="sec" id="sec1" href="area-models.html"><span class="num">1</span><div><h2>Area Models</h2><p>Two selections from a percent: P(both), P(neither), P(exactly one)</p></div><span class="tag" id="tag1">Start</span></a></li>
     <li><a class="sec" id="sec2" href="two-way-tables.html"><span class="num">2</span><div><h2>Two-Way Tables: And / Or</h2><p>P(A), P(B), P(A and B), P(A or B)</p></div><span class="tag" id="tag2">Start</span></a></li>
-    <li><div class="sec soon"><span class="num">3</span><div><h2>Conditional Probability</h2><p>P(A | B) in both directions</p></div><span class="tag">Coming soon</span></div></li>
-    <li><div class="sec soon"><span class="num">4</span><div><h2>Mutually Exclusive and Independence</h2><p>Decide and explain using probability</p></div><span class="tag">Coming soon</span></div></li>
+    <li><a class="sec" id="sec3" href="conditional.html"><span class="num">3</span><div><h2>Conditional Probability</h2><p>P(A | B) in both directions</p></div><span class="tag" id="tag3">Start</span></a></li>
+    <li><a class="sec" id="sec4" href="independence.html"><span class="num">4</span><div><h2>Mutually Exclusive and Independence</h2><p>Decide and explain using probability</p></div><span class="tag" id="tag4">Start</span></a></li>
   </ol>
 </main>
 <script>
-[['1','cp2u8-section1',3],['2','cp2u8-section2',2]].forEach(([n,key,steps])=>{
+[['1','cp2u8-section1',3],['2','cp2u8-section2',2],['3','cp2u8-section3',2],['4','cp2u8-section4',2]].forEach(([n,key,steps])=>{
   try{
     const p=JSON.parse(localStorage.getItem(key)||'{}');
     let done=0;while(p['step'+(done+1)])done++;
